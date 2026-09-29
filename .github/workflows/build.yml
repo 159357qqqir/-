@@ -1,0 +1,25 @@
+name: Menu Password Binary
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install aarch64 cross gcc
+        run: |
+          sudo apt update
+          sudo apt install -y aarch64-linux-gnu-gcc
+
+      - name: Compile
+        run: |
+          aarch64-linux-gnu-gcc main.c -o menubin
+          chmod +x menubin
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: menu-password-bin
+          path: menubin
