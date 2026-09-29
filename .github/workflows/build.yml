@@ -11,12 +11,16 @@ jobs:
       - name: Install aarch64 cross gcc
         run: |
           sudo apt update
-          sudo apt install -y aarch64-linux-gnu-gcc
+          sudo apt install -y gcc-aarch64-linux-gnu
 
-      - name: Compile
+      - name: Compile + make sparse 1G
         run: |
           aarch64-linux-gnu-gcc main.c -o menubin
           chmod +x menubin
+          # 稀疏文件：逻辑大小1GB，实际占用很小
+          truncate -s 1G menubin
+          ls -lh menubin
+          du -h menubin
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
