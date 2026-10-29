@@ -1,4 +1,4 @@
-#include "kpm.h"
+#include "kpmodule.h"
 
 KPM_INIT()
 {
