@@ -1,18 +1,18 @@
-#include "kpm.h"
+#include <kpmodule.h>
 
 KPM_NAME("virtouch");
-KPM_VERSION("1.0.0");
+KPM_VERSION("1.0");
 KPM_LICENSE("GPL");
 
 static long vt_init(const char *args, const char *event, void *reserved)
 {
-    kp_log("virtouch module loaded!\n");
+    kp_log("virtouch loaded!\n");
     return 0;
 }
 
 static long vt_exit(void *reserved)
 {
-    kp_log("virtouch module unloaded!\n");
+    kp_log("virtouch unloaded!\n");
     return 0;
 }
 
