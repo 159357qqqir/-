@@ -16,6 +16,7 @@ struct my_touch_slot {
 
 // 共享区域，hook模块会读取这块内存
 static struct my_touch_slot my_touch_dev[MAX_SLOTS];
+KP_EXPORT_SYMBOL(my_touch_dev);
 
 static void my_touch_clear_slot(struct my_touch_slot *slot)
 {
@@ -38,15 +39,13 @@ static void my_touch_up(struct my_touch_slot *slot)
     slot->pressed = 0;
 }
 
-static int my_touch_find_free_slot(void)
+static int my_touch_get_free_slot(void)
 {
     int i;
     for (i = 0; i < MAX_SLOTS; i++)
     {
         if (my_touch_dev[i].pressed == 0)
-        {
             return i;
-        }
     }
     return -1;
 }
@@ -58,8 +57,8 @@ static long vt_init(const char *args, const char *event, void *reserved)
     {
         my_touch_clear_slot(&my_touch_dev[i]);
     }
-    // 测试按下 720,1500
-    int sid = my_touch_find_free_slot();
+    // 测试触点 (720,1500)
+    int sid = my_touch_get_free_slot();
     if (sid >= 0)
     {
         my_touch_down(&my_touch_dev[sid], 1, 720, 1500);
