@@ -8,19 +8,26 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install cross compiler
+      - name: Deps
         run: |
           sudo apt update
-          sudo apt install -y gcc-aarch64-none-elf binutils-aarch64-none-elf make git
+          sudo apt install -y git make cmake gcc g++
 
-      - name: Fetch KernelPatch
+      - name: Clone KernelPatch
         run: git clone https://github.com/bmax121/KernelPatch.git
 
-      - name: Compile KPM
-        run: make
+      - name: Build kptools
+        run: |
+          cd KernelPatch/kptools
+          cmake -B build
+          cmake --build build
+          echo "$PWD/build" >> $GITHUB_PATH
+
+      - name: Build virtouch.kpm
+        run: |
+          kpm-build --arch aarch64 virtouch.c -o virtouch.kpm
 
       - name: Upload
         uses: actions/upload-artifact@v4
