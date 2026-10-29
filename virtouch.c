@@ -1,5 +1,4 @@
 #include <kpmodule.h>
-#include <linux/input.h>
 
 KPM_NAME("vt_touch");
 KPM_VERSION("1.0");
@@ -7,6 +6,18 @@ KPM_LICENSE("GPL");
 KPM_AUTHOR("virtouch");
 
 #define MAX_SLOTS 10
+
+// input 常量，来自内核 input.h
+#define ABS_MT_POSITION_X 0x35
+#define ABS_MT_POSITION_Y 0x36
+#define MT_TOOL_FINGER 0
+
+// 前置声明内核函数（KPM 直接动态调用，不需要头文件）
+struct input_dev;
+void input_mt_slot(struct input_dev *dev, int slot);
+void input_mt_report_slot_state(struct input_dev *dev, unsigned int tool_type, bool active);
+void input_report_abs(struct input_dev *dev, unsigned int code, int value);
+void input_sync(struct input_dev *dev);
 
 struct my_touch_slot {
     int track_id;
@@ -90,7 +101,7 @@ static long vt_init(const char *args, const char *event, void *reserved)
     {
         my_touch_clear_slot(&my_touch_dev[i]);
     }
-    // 测试触点 720,1500
+    // 测试触点 (720,1500)
     int sid = my_touch_get_free_slot();
     if (sid >= 0)
     {
