@@ -16,21 +16,19 @@ jobs:
           sudo apt update
           sudo apt install -y clang lld
 
-      - name: Clone KernelPatch
-        run: git clone --depth=1 https://github.com/bmax121/KernelPatch.git
+      - name: Clone APatch（这里才有kpms！）
+        run: git clone --depth=1 https://github.com/bmax121/APatch.git
 
-      - name: Debug 查看头文件目录
+      - name: Debug list headers
         run: |
-          export KP_ROOT=$PWD/KernelPatch
-          ls -la ${KP_ROOT}/kernel/patch/include
-          ls -la ${KP_ROOT}/kernel/include
+          export AP_ROOT=$PWD/APatch
+          ls -la ${AP_ROOT}/kpms/include
 
       - name: Compile KPM
         run: |
-          export KP_ROOT=$PWD/KernelPatch
+          export AP_ROOT=$PWD/APatch
           clang --target=aarch64-none-elf -ffreestanding -fno-stack-protector -fno-stack-check -fno-PIC -mno-outline-atomics \
-            -I${KP_ROOT}/kernel/include \
-            -I${KP_ROOT}/kernel/patch/include \
+            -I${AP_ROOT}/kpms/include \
             -c virtouch.c -o virtouch.o
           ld.lld -r virtouch.o -o virtouch.kpm
 
