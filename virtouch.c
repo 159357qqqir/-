@@ -5,20 +5,27 @@ KPM_VERSION("1.0");
 KPM_LICENSE("GPL");
 KPM_AUTHOR("virtouch");
 
+// ========= 手动补全函数声明，解决 implicit 报错 =========
+extern unsigned long kallsyms_lookup_name(const char *name);
+extern int pr_info(const char *fmt, ...);
+extern int pr_err(const char *fmt, ...);
+
+// KPM hook 接口声明
+extern long kp_inline_hook(void *target, void *handler, void **orig);
+extern long kp_inline_unhook(void *target);
+// =========================================================
+
 struct thermal_cooling_device;
-// 函数原型：设置cooling档位，state越大=降温越强（降频越狠）
 typedef int (*fp_set_cur_state)(struct thermal_cooling_device *, unsigned long);
 static fp_set_cur_state orig_set_cur_state = NULL;
 
 static int hooked_set_cur_state(struct thermal_cooling_device *cdev, unsigned long state)
 {
-    // 核心：拦截所有大于0的降温请求，直接返回成功，不去执行降频/降亮度
     if(state > 0)
     {
         pr_info("[KP-Therm] BLOCK cooling state=%lu\n", state);
         return 0;
     }
-    // state=0是恢复满频，放行
     return orig_set_cur_state(cdev, state);
 }
 
@@ -27,7 +34,7 @@ static long therm_init(const char *args, const char *event, void *reserved)
     unsigned long sym = kallsyms_lookup_name("thermal_cooling_device_set_cur_state");
     if(!sym)
     {
-        pr_err("[KP-Therm] symbol NOT FOUND!\n");
+        pr_err("[KP-Therm] symbol thermal_cooling_device_set_cur_state NOT FOUND!\n");
         return -1;
     }
     orig_set_cur_state = (fp_set_cur_state)sym;
