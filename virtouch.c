@@ -1,6 +1,7 @@
 #include <kpmodule.h>
+#include <linux/input.h>
 
-KPM_NAME("virtouch");
+KPM_NAME("vt_touch");
 KPM_VERSION("1.0");
 KPM_LICENSE("GPL");
 KPM_AUTHOR("virtouch");
@@ -14,8 +15,8 @@ struct my_touch_slot {
     int pressed;
 };
 
-// 共享区域，hook模块会读取这块内存
 static struct my_touch_slot my_touch_dev[MAX_SLOTS];
+static struct input_dev *g_touch_idev = NULL;
 
 static void my_touch_clear_slot(struct my_touch_slot *slot)
 {
@@ -49,6 +50,39 @@ static int my_touch_get_free_slot(void)
     return -1;
 }
 
+KP_HOOK(synaptics_ts_set_touch_function)
+{
+    if (!g_touch_idev)
+    {
+        g_touch_idev = KP_ARG(0);
+    }
+    KP_CALL_ORIGIN();
+    return 0;
+}
+
+KP_HOOK(synaptics_ts_parse_touch_report)
+{
+    KP_CALL_ORIGIN();
+
+    if (!g_touch_idev)
+        return 0;
+
+    int i;
+    for (i = 0; i < MAX_SLOTS; i++)
+    {
+        struct my_touch_slot *s = &my_touch_dev[i];
+        if (!s->pressed)
+            continue;
+
+        input_mt_slot(g_touch_idev, s->track_id);
+        input_mt_report_slot_state(g_touch_idev, MT_TOOL_FINGER, true);
+        input_report_abs(g_touch_idev, ABS_MT_POSITION_X, s->x);
+        input_report_abs(g_touch_idev, ABS_MT_POSITION_Y, s->y);
+    }
+    input_sync(g_touch_idev);
+    return 0;
+}
+
 static long vt_init(const char *args, const char *event, void *reserved)
 {
     int i;
@@ -56,7 +90,7 @@ static long vt_init(const char *args, const char *event, void *reserved)
     {
         my_touch_clear_slot(&my_touch_dev[i]);
     }
-    // 测试触点 (720,1500)
+    // 测试触点 720,1500
     int sid = my_touch_get_free_slot();
     if (sid >= 0)
     {
@@ -77,6 +111,3 @@ static long vt_exit(void *reserved)
 
 KPM_INIT(vt_init);
 KPM_EXIT(vt_exit);
-
-// KPModule 正确导出符号方式，放在文件末尾
-KPM_EXPORT(my_touch_dev);
