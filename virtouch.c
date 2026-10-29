@@ -1,4 +1,4 @@
-#include "kpmodule.h"
+#include "kpm.h"
 
 KPM_NAME("virtouch");
 KPM_VERSION("1.0.0");
