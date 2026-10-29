@@ -12,6 +12,7 @@ extern char *strstr(const char *haystack, const char *needle);
 extern size_t strlen(const char *s);
 extern char *strncpy(char *dest, const char *src, size_t n);
 extern unsigned long copy_to_user(void __user *to, const void *from, unsigned long n);
+extern unsigned long copy_from_user(void *to, const void __user *from, unsigned long n);
 
 // KPM Hook API声明
 extern long kp_hook_syscall(long nr, void *handler, void **orig);
@@ -25,7 +26,6 @@ extern long kp_unhook_syscall(long nr);
 static long (*orig_openat)(int dfd, const char __user *path, int flags, mode_t mode) = NULL;
 static long (*orig_read)(unsigned int fd, char __user *buf, size_t count) = NULL;
 
-// 标记：当前fd是不是thermal温度文件
 static int fake_temp_fd = -1;
 
 static long hooked_openat(int dfd, const char __user *path, int flags, mode_t mode)
