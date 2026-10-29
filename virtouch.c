@@ -1,48 +1,51 @@
 #include <kpmodule.h>
 
-KPM_NAME("kp_thermal_exynos_hard8");
+KPM_NAME("kp_thermal_sys");
 KPM_VERSION("1.0");
 KPM_LICENSE("GPL");
 KPM_AUTHOR("virtouch");
 
-extern unsigned long kallsyms_lookup_name(const char *name);
+#include <linux/string.h>
+#include <linux/fs.h>
+
 extern int pr_info(const char *fmt, ...);
 extern int pr_err(const char *fmt, ...);
-extern long kp_inline_hook(void *target, void *handler, void **orig);
-extern long kp_inline_unhook(void *target);
 
-struct thermal_zone_device;
-typedef void (*fp_exynos_report_trigger)(struct thermal_zone_device *tz, int trip);
-static fp_exynos_report_trigger orig_exynos_report_trigger = NULL;
+static long (*orig_read)(unsigned int fd, char __user *buf, size_t count) = NULL;
 
-static void hooked_exynos_report_trigger(struct thermal_zone_device *tz, int trip)
+static long hooked_read(unsigned int fd, char __user *buf, size_t count)
 {
-    pr_info("[KP-Therm] Drop thermal trigger trip=%d\n", trip);
-    // 直接return，不往thermal子系统上报高温，拦截温控链路
-    return;
+    char kbuf[64];
+    long ret = orig_read(fd, kbuf, sizeof(kbuf)-1);
+    if (ret > 0)
+    {
+        char path[128];
+        if (kp_get_fd_path(fd, path, sizeof(path)) == 0)
+        {
+            if (strstr(path, "/sys/class/thermal/") && strstr(path, "/temp"))
+            {
+                pr_info("[KP-Therm] fake temp 40000\n");
+                strncpy(kbuf, "40000\n", sizeof(kbuf)-1);
+                ret = strlen(kbuf);
+            }
+        }
+    }
+    if (copy_to_user(buf, kbuf, ret))
+        return -EFAULT;
+    return ret;
 }
 
 static long therm_init(const char *args, const char *event, void *reserved)
 {
-    unsigned long sym = kallsyms_lookup_name("exynos_report_trigger");
-    if(!sym)
-    {
-        pr_err("[KP-Therm] exynos_report_trigger NOT FOUND\n");
-        return -1;
-    }
-    orig_exynos_report_trigger = (fp_exynos_report_trigger)sym;
-    kp_inline_hook((void *)sym, hooked_exynos_report_trigger, (void **)&orig_exynos_report_trigger);
-    pr_info("[KP-Therm] hook exynos_report_trigger OK\n");
+    kp_hook_syscall(__NR_read, hooked_read, (void **)&orig_read);
+    pr_info("[KP-Therm] syscall hook read ok\n");
     return 0;
 }
 
 static long therm_exit(void *reserved)
 {
-    if(orig_exynos_report_trigger)
-    {
-        kp_inline_unhook((void *)orig_exynos_report_trigger);
-        orig_exynos_report_trigger = NULL;
-    }
+    kp_unhook_syscall(__NR_read);
+    pr_info("[KP-Therm] unhook ok\n");
     return 0;
 }
 
