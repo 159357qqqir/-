@@ -1,20 +1,30 @@
-#include <kpmodule.h>
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/thermal.h>
 
-KPM_NAME("kp_empty");
-KPM_VERSION("1.0");
-KPM_LICENSE("GPL");
-KPM_AUTHOR("test");
+typedef int (*__thermal_zone_get_temp_t)(struct thermal_zone_device *, int *);
+static __thermal_zone_get_temp_t orig_func = (__thermal_zone_get_temp_t *)0xFFFFFFC008C1CD04;
 
-static long empty_init(const char *args, const char *event, void *reserved)
+static int __init test_kcfi_init(void)
 {
-    // 啥都不干，直接返回成功
+    int temp;
+    struct thermal_zone_device *tz;
+
+    pr_info("KPM test: try call thermal_zone_get_temp\n");
+    // 这里只是测试调用，不是hook！不修改内核代码，避开RKP写保护
+    if (orig_func) {
+        // ⚠️ KCFI校验点在这里：函数指针间接调用
+        int ret = orig_func(tz, &temp);
+        pr_info("ret:%d temp:%d\n", ret, temp);
+    }
     return 0;
 }
 
-static long empty_exit(void *reserved)
+static void __exit test_kcfi_exit(void)
 {
-    return 0;
+    pr_info("test exit\n");
 }
 
-KPM_INIT(empty_init);
-KPM_EXIT(empty_exit);
+module_init(test_kcfi_init);
+module_exit(test_kcfi_exit);
+MODULE_LICENSE("GPL");
