@@ -1,4 +1,5 @@
 #include "kpmodule.h"
+#include "linux/printk.h"
 
 KPM_NAME("virtouch");
 KPM_VERSION("1.0.0");
