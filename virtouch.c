@@ -1,4 +1,4 @@
-#include "kp_module.h"
+#include <kpmodule.h>
 #include <linux/input.h>
 #include <linux/delay.h>
 
@@ -7,7 +7,6 @@ KPM_VERSION("1.0");
 KPM_LICENSE("GPL");
 KPM_AUTHOR("virtouch");
 
-// 声明 kallsyms_lookup_name
 typedef unsigned long (*kallsyms_lookup_name_t)(const char *name);
 static kallsyms_lookup_name_t kallsyms_lookup_name;
 
@@ -41,7 +40,6 @@ static long vt_init(const char *args, const char *event, void *reserved)
 {
     pr_info("[virtouch] start check symbols\n");
 
-    // 先拿到 kallsyms_lookup_name
     kallsyms_lookup_name = (kallsyms_lookup_name_t)kallsyms_lookup_name("kallsyms_lookup_name");
     if (!kallsyms_lookup_name)
     {
@@ -49,7 +47,6 @@ static long vt_init(const char *args, const char *event, void *reserved)
         return -1;
     }
 
-    // 逐个查找符号
     unsigned long s1 = kallsyms_lookup_name("input_allocate_device");
     unsigned long s2 = kallsyms_lookup_name("input_register_device");
     unsigned long s3 = kallsyms_lookup_name("input_unregister_device");
@@ -68,7 +65,6 @@ static long vt_init(const char *args, const char *event, void *reserved)
     pr_info("[virtouch] input_sync = %lx\n", s7);
     pr_info("[virtouch] input_set_abs_params = %lx\n", s8);
 
-    // 赋值函数指针
     input_allocate_device = (input_allocate_device_t)s1;
     input_register_device = (input_register_device_t)s2;
     input_unregister_device = (input_unregister_device_t)s3;
@@ -78,14 +74,12 @@ static long vt_init(const char *args, const char *event, void *reserved)
     input_sync = (input_sync_t)s7;
     input_set_abs_params = (input_set_abs_params_t)s8;
 
-    // 只要任意一个关键符号找不到，直接退出
     if (!input_allocate_device || !input_register_device || !input_report_abs || !input_sync)
     {
         pr_info("[virtouch] some input symbol missing!\n");
         return -1;
     }
 
-    // ========= 创建设备 =========
     vdev = input_allocate_device();
     if (!vdev)
     {
@@ -95,12 +89,10 @@ static long vt_init(const char *args, const char *event, void *reserved)
 
     vdev->name = "virtouch-kpm";
 
-    // 能力位
     __set_bit(EV_ABS, vdev->evbit);
     __set_bit(EV_KEY, vdev->evbit);
     __set_bit(BTN_TOUCH, vdev->keybit);
 
-    // MT触摸坐标
     input_set_abs_params(vdev, ABS_MT_POSITION_X, 0, 1440, 0, 0);
     input_set_abs_params(vdev, ABS_MT_POSITION_Y, 0, 3120, 0, 0);
     input_set_abs_params(vdev, ABS_MT_TRACKING_ID, 0, 10, 0, 0);
@@ -114,7 +106,6 @@ static long vt_init(const char *args, const char *event, void *reserved)
     }
     pr_info("[virtouch] device ready, try touch down at (720,1500)\n");
 
-    // ========= 模拟一次点击 =========
     input_report_abs(vdev, ABS_MT_TRACKING_ID, 0);
     input_report_abs(vdev, ABS_MT_POSITION_X, 720);
     input_report_abs(vdev, ABS_MT_POSITION_Y, 1500);
