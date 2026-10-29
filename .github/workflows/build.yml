@@ -23,8 +23,7 @@ jobs:
         run: |
           export KP_ROOT=$PWD/KernelPatch
           clang --target=aarch64-none-elf -ffreestanding -fno-stack-protector -fno-stack-check -fno-PIC -mno-outline-atomics \
-            -I${KP_ROOT}/kernel/include \
-            -I${KP_ROOT}/kernel/patch/include \
+            -I${KP_ROOT}/kpms/include \
             -c virtouch.c -o virtouch.o
           ld.lld -r virtouch.o -o virtouch.kpm
 
