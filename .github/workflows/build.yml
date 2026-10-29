@@ -11,19 +11,18 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Install gcc-aarch64-none-elf
+      - name: Install cross compiler
         run: |
           sudo apt update
           sudo apt install -y gcc-aarch64-none-elf binutils-aarch64-none-elf make git
 
-      - name: Clone KernelPatch for kpm.h
+      - name: Fetch KernelPatch
         run: git clone https://github.com/bmax121/KernelPatch.git
 
-      - name: Build
-        run: |
-          make
+      - name: Compile KPM
+        run: make
 
-      - name: Upload artifact
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: virtouch-kpm
