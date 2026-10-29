@@ -1,6 +1,8 @@
 #include <kpmodule.h>
+#include <stdarg.h>
+#include <string.h>
 
-// 手动定义input事件常量，规避头文件缺失
+// 手动定义input事件常量
 #define EV_KEY      0x01
 #define EV_ABS      0x03
 #define BTN_TOUCH   0x14a
@@ -21,8 +23,8 @@ static void (*p_input_unregister_device)(struct input_dev *dev);
 static void (*p_input_set_capability)(struct input_dev *dev, unsigned int type, unsigned int code);
 static void (*p_input_report_abs)(struct input_dev *dev, unsigned int code, int value);
 static void (*p_input_sync)(struct input_dev *dev);
-// 新增！设置ABS参数，替代直接读写absinfo
 static void (*p_input_set_abs_params)(struct input_dev *dev, unsigned int axis, int min, int max, int fuzz, int flat);
+static void (*p_msleep)(unsigned int msec);
 
 static struct input_dev *vt_dev = NULL;
 
@@ -43,6 +45,7 @@ static long vt_init(const char *args, const char *event, void *reserved)
     p_input_report_abs         = (void *)kp_find_symbol("input_report_abs");
     p_input_sync               = (void *)kp_find_symbol("input_sync");
     p_input_set_abs_params     = (void *)kp_find_symbol("input_set_abs_params");
+    p_msleep                   = (void *)kp_find_symbol("msleep");
 
     kp_print("input_allocate_device = %lx\n", (unsigned long)p_input_allocate_device);
     kp_print("input_register_device = %lx\n", (unsigned long)p_input_register_device);
@@ -52,10 +55,11 @@ static long vt_init(const char *args, const char *event, void *reserved)
     kp_print("input_report_abs = %lx\n", (unsigned long)p_input_report_abs);
     kp_print("input_sync = %lx\n", (unsigned long)p_input_sync);
     kp_print("input_set_abs_params = %lx\n", (unsigned long)p_input_set_abs_params);
+    kp_print("msleep = %lx\n", (unsigned long)p_msleep);
 
     if (!p_input_allocate_device || !p_input_register_device || !p_input_free_device ||
         !p_input_unregister_device || !p_input_set_capability || !p_input_report_abs ||
-        !p_input_sync || !p_input_set_abs_params)
+        !p_input_sync || !p_input_set_abs_params || !p_msleep)
     {
         kp_print("[virtouch] ERROR: some symbol missing!\n");
         return -1;
@@ -68,9 +72,6 @@ static long vt_init(const char *args, const char *event, void *reserved)
         return -1;
     }
 
-    // 设备名字
-    snprintf(vt_dev->name, sizeof(vt_dev->name), "KP_VirtualTouch");
-
     // 能力注册
     p_input_set_capability(vt_dev, EV_KEY, BTN_TOUCH);
     p_input_set_capability(vt_dev, EV_ABS, ABS_MT_SLOT);
@@ -78,7 +79,6 @@ static long vt_init(const char *args, const char *event, void *reserved)
     p_input_set_capability(vt_dev, EV_ABS, ABS_MT_POSITION_X);
     p_input_set_capability(vt_dev, EV_ABS, ABS_MT_POSITION_Y);
 
-    // ✅ 使用官方函数设置坐标范围，不再直接访问absinfo
     p_input_set_abs_params(vt_dev, ABS_MT_SLOT, 0, 4, 0, 0);
     p_input_set_abs_params(vt_dev, ABS_MT_TRACKING_ID, 0, 0xFFFF, 0, 0);
     p_input_set_abs_params(vt_dev, ABS_MT_POSITION_X, 0, 1080, 0, 0);
@@ -102,7 +102,7 @@ static long vt_init(const char *args, const char *event, void *reserved)
     p_input_report_abs(vt_dev, BTN_TOUCH, 1);
     p_input_sync(vt_dev);
 
-    msleep(200);
+    p_msleep(200);
 
     p_input_report_abs(vt_dev, ABS_MT_TRACKING_ID, -1);
     p_input_report_abs(vt_dev, BTN_TOUCH, 0);
