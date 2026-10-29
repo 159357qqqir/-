@@ -11,27 +11,23 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Install clang lld
+      - name: Install aarch64-none-elf toolchain
         run: |
           sudo apt update
-          sudo apt install -y clang lld
+          sudo apt install -y gcc-aarch64-none-elf clang lld
 
-      - name: Clone KernelPatch（完整克隆，不要depth=1！！）
+      - name: Clone full KernelPatch
         run: git clone https://github.com/bmax121/KernelPatch.git
 
-      - name: Debug list headers
+      - name: Compile KPM (same as official demo Makefile)
         run: |
           export KP_ROOT=$PWD/KernelPatch
-          ls -la ${KP_ROOT}/kpms
-          ls -la ${KP_ROOT}/kpms/include
-
-      - name: Compile KPM
-        run: |
-          export KP_ROOT=$PWD/KernelPatch
-          clang --target=aarch64-none-elf -ffreestanding -fno-stack-protector -fno-stack-check -fno-PIC -mno-outline-atomics \
-            -I${KP_ROOT}/kpms/include \
+          export CROSS=aarch64-none-elf-
+          ${CROSS}clang --target=aarch64-none-elf \
+            -ffreestanding -fno-stack-protector -fno-stack-check -fno-PIC -mno-outline-atomics \
+            -I${KP_ROOT}/kernel/include \
             -c virtouch.c -o virtouch.o
-          ld.lld -r virtouch.o -o virtouch.kpm
+          ${CROSS}ld.lld -r virtouch.o -o virtouch.kpm
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
