@@ -19,10 +19,10 @@ jobs:
       - name: Clone full KernelPatch
         run: git clone https://github.com/bmax121/KernelPatch.git
 
-      - name: Debug check header path
+      - name: Debug check headers
         run: |
           export KP_ROOT=$PWD/KernelPatch
-          ls ${KP_ROOT}/kernel/include
+          ls ${KP_ROOT}/kernel/patch/include/uapi
 
       - name: Compile KPM
         run: |
@@ -30,6 +30,7 @@ jobs:
           clang --target=aarch64-linux-gnu \
             -ffreestanding -fno-stack-protector -fno-stack-check -fno-PIC -mno-outline-atomics \
             -I${KP_ROOT}/kernel/include \
+            -I${KP_ROOT}/kernel/patch/include \
             -c virtouch.c -o virtouch.o
           ld.lld -r virtouch.o -o virtouch.kpm
 
