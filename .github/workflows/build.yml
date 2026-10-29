@@ -8,28 +8,30 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-      - name: Deps
+      - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y git make cmake gcc g++
+          sudo apt install -y wget tar make git
 
-      - name: Clone KernelPatch
-        run: git clone https://github.com/bmax121/KernelPatch.git
-
-      - name: Build kptools
+      - name: Download toolchain (mirror)
         run: |
-          cd KernelPatch/kptools
-          cmake -B build
-          cmake --build build
-          echo "$PWD/build" >> $GITHUB_PATH
+          wget https://mirrors.ustc.edu.cn/arm-gnu-toolchain/13.2.rel1/aarch64-none-elf/arm-gnu-toolchain-13.2.rel1-x86_64-aarch64-none-elf.tar.xz
+          tar -Jxf arm-gnu-toolchain-13.2.rel1-x86_64-aarch64-none-elf.tar.xz
+          echo "$PWD/arm-gnu-toolchain-13.2.rel1-x86_64-aarch64-none-elf/bin" >> $GITHUB_PATH
 
-      - name: Build virtouch.kpm
+      - name: Clone KernelPatch (含头文件)
+        run: git clone --depth=1 https://github.com/bmax121/KernelPatch.git
+
+      - name: Compile KPM
         run: |
-          kpm-build --arch aarch64 virtouch.c -o virtouch.kpm
+          export KP_ROOT=$PWD/KernelPatch
+          aarch64-none-elf-gcc -ffreestanding -fno-stack-protector -fno-stack-check -fno-PIC -mno-outline-atomics -I${KP_ROOT}/include -c virtouch.c -o virtouch.o
+          aarch64-none-elf-ld -r virtouch.o -o virtouch.kpm
 
-      - name: Upload
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: virtouch-kpm
