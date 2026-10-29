@@ -8,7 +8,6 @@ KPM_AUTHOR("virtouch");
 #define ABS_MT_POSITION_X 0x35
 #define ABS_MT_POSITION_Y 0x36
 #define MT_TOOL_FINGER 0
-#define EV_ABS 0x03
 
 struct input_dev;
 extern unsigned long kallsyms_lookup_name(const char *name);
@@ -19,55 +18,57 @@ void input_report_abs(struct input_dev *dev, unsigned int code, int value);
 void input_sync(struct input_dev *dev);
 
 static struct input_dev *g_tp_dev = NULL;
+static void *delay_work = NULL;
 
-// 下发触摸事件
-static void send_touch(int x, int y)
+// 发送一次点击：按下+抬起
+static void send_one_click(int x, int y)
 {
     if (!g_tp_dev)
         return;
 
-    // 按下
+    // down
     input_mt_slot(g_tp_dev, 1);
     input_mt_report_slot_state(g_tp_dev, MT_TOOL_FINGER, 1);
     input_report_abs(g_tp_dev, ABS_MT_POSITION_X, x);
     input_report_abs(g_tp_dev, ABS_MT_POSITION_Y, y);
     input_sync(g_tp_dev);
 
-    // 抬起
+    // up
     input_mt_slot(g_tp_dev, 1);
     input_mt_report_slot_state(g_tp_dev, MT_TOOL_FINGER, 0);
     input_sync(g_tp_dev);
 }
 
-// kpctl 回调：用户执行 kpctl send vt_touch x y
-static long vt_ctl(const char *args, const char *out, unsigned int out_len)
+// 定时回调，反复点击 (720,1500)
+static void auto_click_work(void *arg)
 {
-    int x, y;
-    if (sscanf(args, "%d %d", &x, &y) != 2)
-    {
-        return -1;
-    }
-    send_touch(x, y);
-    return 0;
+    send_one_click(720, 1500);
+    // 3000ms 之后再次调度
+    delay_work = kthread_delay_work(3000, auto_click_work, NULL);
 }
 
 static long vt_init(const char *args, const char *event, void *reserved)
 {
-    // 三星synaptics触屏驱动全局input_dev符号
     unsigned long dev_addr = kallsyms_lookup_name("synaptics_ts_input_dev");
     if (dev_addr != 0)
     {
         g_tp_dev = (struct input_dev *)dev_addr;
     }
+    // 启动自动点击任务
+    delay_work = kthread_delay_work(1000, auto_click_work, NULL);
     return 0;
 }
 
 static long vt_exit(void *reserved)
 {
+    if (delay_work)
+    {
+        kthread_cancel_work(delay_work);
+        delay_work = NULL;
+    }
     g_tp_dev = NULL;
     return 0;
 }
 
-KPM_CTL(vt_ctl);
 KPM_INIT(vt_init);
 KPM_EXIT(vt_exit);
