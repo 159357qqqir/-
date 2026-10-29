@@ -16,7 +16,6 @@ struct my_touch_slot {
 
 // 共享区域，hook模块会读取这块内存
 static struct my_touch_slot my_touch_dev[MAX_SLOTS];
-KP_EXPORT_SYMBOL(my_touch_dev);
 
 static void my_touch_clear_slot(struct my_touch_slot *slot)
 {
@@ -78,3 +77,6 @@ static long vt_exit(void *reserved)
 
 KPM_INIT(vt_init);
 KPM_EXIT(vt_exit);
+
+// KPModule 正确导出符号方式，放在文件末尾
+KPM_EXPORT(my_touch_dev);
