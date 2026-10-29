@@ -6,13 +6,11 @@ KPM_LICENSE("GPL");
 
 static long vt_init(const char *args, const char *event, void *reserved)
 {
-    pr_info("virtouch loaded!\n");
     return 0;
 }
 
 static long vt_exit(void *reserved)
 {
-    pr_info("virtouch unloaded!\n");
     return 0;
 }
 
