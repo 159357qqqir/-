@@ -1,5 +1,9 @@
 #include <kpmodule.h>
 
+// 提前声明KP导出函数原型
+unsigned long kp_find_symbol(const char *name);
+void kp_print(const char *fmt, ...);
+
 KPM_NAME("virtouch");
 KPM_VERSION("1.0");
 KPM_LICENSE("GPL");
@@ -32,7 +36,6 @@ static void *vinput_dev = NULL;
 #define ABS_MT_POSITION_Y       0x36
 #define ABS_MT_TOUCH_MAJOR      0x3a
 
-// 可选：给外部调用的投递触摸点接口（你后面可以用KPM参数调用这个）
 static void virtouch_send_touch(int slot, int tracking_id, int x, int y)
 {
     if (!vinput_dev || !fn_input_report_abs || !fn_input_sync)
@@ -52,14 +55,13 @@ static long vt_init(const char *args, const char *event, void *reserved)
 {
     kp_print("[virtouch] init start\n");
 
-    // 查找全部需要的内核符号
-    fn_input_allocate_device = kp_find_symbol("input_allocate_device");
-    fn_input_register_device = kp_find_symbol("input_register_device");
-    fn_input_unregister_device = kp_find_symbol("input_unregister_device");
-    fn_input_free_device = kp_find_symbol("input_free_device");
-    fn_input_set_capability = kp_find_symbol("input_set_capability");
-    fn_input_report_abs = kp_find_symbol("input_report_abs");
-    fn_input_sync = kp_find_symbol("input_sync");
+    fn_input_allocate_device = (input_allocate_device_t)(void *)kp_find_symbol("input_allocate_device");
+    fn_input_register_device = (input_register_device_t)(void *)kp_find_symbol("input_register_device");
+    fn_input_unregister_device = (input_unregister_device_t)(void *)kp_find_symbol("input_unregister_device");
+    fn_input_free_device = (input_free_device_t)(void *)kp_find_symbol("input_free_device");
+    fn_input_set_capability = (input_set_capability_t)(void *)kp_find_symbol("input_set_capability");
+    fn_input_report_abs = (input_report_abs_t)(void *)kp_find_symbol("input_report_abs");
+    fn_input_sync = (input_sync_t)(void *)kp_find_symbol("input_sync");
 
     if (!fn_input_allocate_device || !fn_input_register_device ||
         !fn_input_unregister_device || !fn_input_free_device ||
@@ -70,7 +72,6 @@ static long vt_init(const char *args, const char *event, void *reserved)
     }
     kp_print("[virtouch] all symbols found\n");
 
-    // 分配虚拟input设备
     vinput_dev = fn_input_allocate_device();
     if (!vinput_dev)
     {
@@ -78,14 +79,12 @@ static long vt_init(const char *args, const char *event, void *reserved)
         return -1;
     }
 
-    // 设置能力：EV_ABS，多点触摸MT
     fn_input_set_capability(vinput_dev, EV_ABS, ABS_MT_SLOT);
     fn_input_set_capability(vinput_dev, EV_ABS, ABS_MT_TRACKING_ID);
     fn_input_set_capability(vinput_dev, EV_ABS, ABS_MT_POSITION_X);
     fn_input_set_capability(vinput_dev, EV_ABS, ABS_MT_POSITION_Y);
     fn_input_set_capability(vinput_dev, EV_ABS, ABS_MT_TOUCH_MAJOR);
 
-    // 注册到内核，生成 /dev/input/eventX
     int ret = fn_input_register_device(vinput_dev);
     if (ret != 0)
     {
