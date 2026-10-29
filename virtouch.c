@@ -5,11 +5,12 @@ KPM_VERSION("1.0");
 KPM_LICENSE("GPL");
 KPM_AUTHOR("virtouch");
 
-#include <linux/string.h>
-#include <linux/fs.h>
-
 extern int pr_info(const char *fmt, ...);
 extern int pr_err(const char *fmt, ...);
+// KPM内置字符串函数声明
+extern char *strstr(const char *haystack, const char *needle);
+extern size_t strlen(const char *s);
+extern char *strncpy(char *dest, const char *src, size_t n);
 
 static long (*orig_read)(unsigned int fd, char __user *buf, size_t count) = NULL;
 
