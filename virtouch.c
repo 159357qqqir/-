@@ -10,7 +10,6 @@ static int __init test_kcfi_init(void)
     int temp;
     pr_info("KPM test: try call thermal_zone_get_temp\n");
     if (orig_func) {
-        // 注意：这里传NULL tz，大概率直接oops，只是测试编译通过！
         int ret = orig_func(NULL, &temp);
         pr_info("ret:%d temp:%d\n", ret, temp);
     }
