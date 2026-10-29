@@ -18,33 +18,20 @@ void input_report_abs(struct input_dev *dev, unsigned int code, int value);
 void input_sync(struct input_dev *dev);
 
 static struct input_dev *g_tp_dev = NULL;
-static void *delay_work = NULL;
 
-// 发送一次点击：按下+抬起
 static void send_one_click(int x, int y)
 {
     if (!g_tp_dev)
         return;
-
-    // down
     input_mt_slot(g_tp_dev, 1);
     input_mt_report_slot_state(g_tp_dev, MT_TOOL_FINGER, 1);
     input_report_abs(g_tp_dev, ABS_MT_POSITION_X, x);
     input_report_abs(g_tp_dev, ABS_MT_POSITION_Y, y);
     input_sync(g_tp_dev);
 
-    // up
     input_mt_slot(g_tp_dev, 1);
     input_mt_report_slot_state(g_tp_dev, MT_TOOL_FINGER, 0);
     input_sync(g_tp_dev);
-}
-
-// 定时回调，反复点击 (720,1500)
-static void auto_click_work(void *arg)
-{
-    send_one_click(720, 1500);
-    // 3000ms 之后再次调度
-    delay_work = kthread_delay_work(3000, auto_click_work, NULL);
 }
 
 static long vt_init(const char *args, const char *event, void *reserved)
@@ -53,19 +40,13 @@ static long vt_init(const char *args, const char *event, void *reserved)
     if (dev_addr != 0)
     {
         g_tp_dev = (struct input_dev *)dev_addr;
+        send_one_click(720, 1500);
     }
-    // 启动自动点击任务
-    delay_work = kthread_delay_work(1000, auto_click_work, NULL);
     return 0;
 }
 
 static long vt_exit(void *reserved)
 {
-    if (delay_work)
-    {
-        kthread_cancel_work(delay_work);
-        delay_work = NULL;
-    }
     g_tp_dev = NULL;
     return 0;
 }
