@@ -19,6 +19,12 @@ jobs:
       - name: Clone KernelPatch
         run: git clone --depth=1 https://github.com/bmax121/KernelPatch.git
 
+      - name: Debug list header
+        run: |
+          export KP_ROOT=$PWD/KernelPatch
+          ls -la ${KP_ROOT}/kpms/include
+          ls -la ${KP_ROOT}/kpms
+
       - name: Compile KPM
         run: |
           export KP_ROOT=$PWD/KernelPatch
