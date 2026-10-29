@@ -1,4 +1,5 @@
 #include <kpmodule.h>
+#include <asm/ptrace.h>
 
 KPM_NAME("vt_touch");
 KPM_VERSION("1.0");
@@ -26,13 +27,23 @@ struct my_touch_slot {
 static struct my_touch_slot my_touch_dev[MAX_SLOTS];
 static struct input_dev *g_touch_idev = NULL;
 
-// 声明要hook的两个内核函数
-kfunc_def(synaptics_ts_set_touch_function);
-kfunc_def(synaptics_ts_parse_touch_report);
-
-// 保存钩子句柄
-static void *hook_set_touch_fn = NULL;
+// ftrace hook 句柄
+static void *hook_set_touch = NULL;
 static void *hook_parse_report = NULL;
+
+// ftrace 回调原型: void (*fn)(unsigned long ip, struct pt_regs *regs)
+typedef void (*ftrace_hook_cb)(unsigned long ip, struct pt_regs *regs);
+struct ftrace_hook {
+    const char *name;
+    ftrace_hook_cb pre;
+    ftrace_hook_cb post;
+    unsigned long addr;
+    void *handle;
+};
+
+extern unsigned long kallsyms_lookup_name(const char *name);
+extern int ftrace_hook_register(struct ftrace_hook *h);
+extern void ftrace_hook_unregister(struct ftrace_hook *h);
 
 static void my_touch_clear_slot(struct my_touch_slot *slot)
 {
@@ -50,20 +61,21 @@ static void my_touch_down(struct my_touch_slot *slot, int tid, int x, int y)
     slot->pressed = 1;
 }
 
-// ========== 钩子回调：synaptics_ts_set_touch_function after ==========
-static void hook_set_touch_after(hook_args_t *args)
+// ========== hook synaptics_ts_set_touch_function post回调，拿input_dev (x0) ==========
+static void cb_set_touch_post(unsigned long ip, struct pt_regs *regs)
 {
     if (!g_touch_idev)
     {
-        g_touch_idev = (struct input_dev *)args->arg0;
+        g_touch_idev = (struct input_dev *)regs->regs[0];
     }
 }
-static hook_wrap_t hook_set_touch_wrap = {
-    .after = hook_set_touch_after,
+static struct ftrace_hook hook_set_touch_info = {
+    .name = "synaptics_ts_set_touch_function",
+    .post = cb_set_touch_post,
 };
 
-// ========== 钩子回调：synaptics_ts_parse_touch_report after ==========
-static void hook_parse_after(hook_args_t *args)
+// ========== hook synaptics_ts_parse_touch_report post回调，追加上报虚拟触点 ==========
+static void cb_parse_post(unsigned long ip, struct pt_regs *regs)
 {
     if (!g_touch_idev)
         return;
@@ -82,8 +94,9 @@ static void hook_parse_after(hook_args_t *args)
     }
     input_sync(g_touch_idev);
 }
-static hook_wrap_t hook_parse_wrap = {
-    .after = hook_parse_after,
+static struct ftrace_hook hook_parse_info = {
+    .name = "synaptics_ts_parse_touch_report",
+    .post = cb_parse_post,
 };
 
 static long vt_init(const char *args, const char *event, void *reserved)
@@ -93,7 +106,7 @@ static long vt_init(const char *args, const char *event, void *reserved)
     {
         my_touch_clear_slot(&my_touch_dev[i]);
     }
-    // 测试触点 720,1500
+    // 测试触点 (720,1500)
     int sid = -1;
     for (i = 0; i < MAX_SLOTS; i++)
     {
@@ -108,22 +121,24 @@ static long vt_init(const char *args, const char *event, void *reserved)
         my_touch_down(&my_touch_dev[sid], 1, 720, 1500);
     }
 
-    // 安装钩子
-    hook_set_touch_fn = hook_wrap2(kfunc_ref(synaptics_ts_set_touch_function), &hook_set_touch_wrap);
-    hook_parse_report = hook_wrap2(kfunc_ref(synaptics_ts_parse_touch_report), &hook_parse_wrap);
+    // 注册ftrace钩子
+    if (ftrace_hook_register(&hook_set_touch_info) == 0)
+        hook_set_touch = hook_set_touch_info.handle;
+    if (ftrace_hook_register(&hook_parse_info) == 0)
+        hook_parse_report = hook_parse_info.handle;
     return 0;
 }
 
 static long vt_exit(void *reserved)
 {
-    if (hook_set_touch_fn)
+    if (hook_set_touch)
     {
-        unhook(hook_set_touch_fn);
-        hook_set_touch_fn = NULL;
+        ftrace_hook_unregister(&hook_set_touch_info);
+        hook_set_touch = NULL;
     }
     if (hook_parse_report)
     {
-        unhook(hook_parse_report);
+        ftrace_hook_unregister(&hook_parse_info);
         hook_parse_report = NULL;
     }
 
