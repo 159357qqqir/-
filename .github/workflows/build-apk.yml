@@ -1,14 +1,14 @@
 name: Build MT Terminal APK
 
 on:
-  workflow_dispatch: # 允许手动点击运行
+  workflow_dispatch:
   push:
     branches: [ "main", "master" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30 # 增加超时限制，防止网络卡死一直挂着
+    timeout-minutes: 30
 
     steps:
       - name: 设置 JDK 17
@@ -20,10 +20,15 @@ jobs:
       - name: 设置 Android SDK
         uses: android-actions/setup-android@v3
         with:
-          # 显式指定需要安装的包，跳过自动检测预装版本的错误逻辑
           packages: 'platforms;android-34 build-tools;34.0.0'
 
-      - name: 一键生成纯源码项目 (纯手写，无任何外部拉取)
+      - name: 下载并解压独立的 Gradle 8.5 (彻底避开系统预装的高版本冲突)
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
+          unzip -q gradle-8.5-bin.zip
+          chmod +x gradle-8.5/bin/gradle
+
+      - name: 一键生成纯源码项目
         run: |
           # 1. 创建目录结构
           mkdir -p app/src/main/java/com/mt/term
@@ -326,13 +331,9 @@ jobs:
 
           echo "源码生成完毕！"
 
-      - name: 初始化 Gradle Wrapper
+      - name: 使用下载的 Gradle 8.5 开始编译
         run: |
-          gradle wrapper --gradle-version 8.4 --distribution-type bin
-          chmod +x gradlew
-
-      - name: 开始编译 APK
-        run: ./gradlew assembleDebug --no-daemon
+          ./gradle-8.5/bin/gradle assembleDebug --no-daemon
 
       - name: 上传 APK 供下载
         uses: actions/upload-artifact@v4
