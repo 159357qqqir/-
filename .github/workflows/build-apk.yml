@@ -1,4 +1,4 @@
-name: Build Chinese Camera APK
+name: Build Calculator APK
 
 on:
   push:
@@ -21,45 +21,214 @@ jobs:
       - name: Setup Gradle Cache
         uses: gradle/actions/setup-gradle@v4
 
-      # 1. 获取官方相机项目
-      - name: Download Camera Project
+      # 🚀 核心魔法：用脚本生成全套安卓计算器源码
+      - name: Generate Calculator Source Code
         run: |
-          git clone https://github.com/android/camera-samples.git my-project
-
-      # 2. 智能汉化：全局搜索文本，找到就替换，找不到也不报错
-      - name: Smart Localization
-        run: |
-          cd my-project
-          echo "正在搜索需要汉化的文件..."
-          STRINGS_FILE=$(find . -name "strings.xml" | head -n 1)
+          echo "正在创建项目目录..."
+          mkdir -p app/src/main/java/com/my/calculator
           
-          if [ -n "$STRINGS_FILE" ]; then
-            echo "✅ 找到语言文件: $STRINGS_FILE"
-            # 强制修改 App 名字为中文
-            sed -i 's/>CameraXBasic</>中文相机</g' $STRINGS_FILE
-            sed -i 's/>Take Picture</>拍照</g' $STRINGS_FILE
-          else
-            echo "⚠️ 没有找到 strings.xml，跳过汉化步骤。"
-          fi
+          # 1. 生成根目录配置文件
+          echo 'rootProject.name = "MyCalculator"
+          include ":app"' > settings.gradle
+          
+          echo 'buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { classpath "com.android.tools.build:gradle:8.1.2" }
+          }
+          allprojects { repositories { google(); mavenCentral() } }' > build.gradle
+          
+          # 2. 生成 App 模块的配置
+          echo 'apply plugin: "com.android.application"
+          android {
+              namespace "com.my.calculator"
+              compileSdk 33
+              defaultConfig {
+                  applicationId "com.my.calculator"
+                  minSdk 24
+                  targetSdk 33
+                  versionCode 1
+                  versionName "1.0"
+              }
+          }' > app/build.gradle
+          
+          # 3. 生成 AndroidManifest.xml (声明应用名和主界面)
+          echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application android:label="全能计算器" android:theme="@android:style/Theme.Material.Light.NoActionBar">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>' > app/src/main/AndroidManifest.xml
 
-      # 3. 智能编译：自动寻找 Gradle 脚本并编译
+          # 4. 生成 Java 核心代码 (纯代码绘制 UI + 计算逻辑)
+          cat > app/src/main/java/com/my/calculator/MainActivity.java << 'EOF'
+          package com.my.calculator;
+
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.view.Gravity;
+          import android.view.View;
+          import android.widget.Button;
+          import android.widget.GridLayout;
+          import android.widget.LinearLayout;
+          import android.widget.TextView;
+          import java.text.DecimalFormat;
+
+          public class MainActivity extends Activity {
+              private TextView display;
+              private String currentInput = "";
+              private String operator = "";
+              private double firstOperand = 0;
+              private boolean isNewInput = true;
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  
+                  // 主布局
+                  LinearLayout mainLayout = new LinearLayout(this);
+                  mainLayout.setOrientation(LinearLayout.VERTICAL);
+                  mainLayout.setPadding(32, 32, 32, 32);
+
+                  // 显示屏
+                  display = new TextView(this);
+                  display.setTextSize(48);
+                  display.setGravity(Gravity.END);
+                  display.setText("0");
+                  LinearLayout.LayoutParams displayParams = new LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.MATCH_PARENT, 0, 1);
+                  display.setLayoutParams(displayParams);
+                  mainLayout.addView(display);
+
+                  // 按键网格
+                  GridLayout grid = new GridLayout(this);
+                  grid.setColumnCount(4);
+                  grid.setRowCount(5);
+                  LinearLayout.LayoutParams gridParams = new LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.MATCH_PARENT, 0, 3);
+                  grid.setLayoutParams(gridParams);
+
+                  // 按键文本
+                  String[] buttons = {
+                          "C", "±", "%", "÷",
+                          "7", "8", "9", "×",
+                          "4", "5", "6", "-",
+                          "1", "2", "3", "+",
+                          "0", ".", "←", "="
+                  };
+
+                  for (int i = 0; i < buttons.length; i++) {
+                      final String text = buttons[i];
+                      Button btn = new Button(this);
+                      btn.setText(text);
+                      btn.setTextSize(24);
+                      
+                      // 网格权重配置
+                      GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+                      params.columnSpec = GridLayout.spec(i % 4, 1f);
+                      params.rowSpec = GridLayout.spec(i / 4, 1f);
+                      params.width = 0;
+                      params.height = 0;
+                      params.setMargins(8, 8, 8, 8);
+                      btn.setLayoutParams(params);
+
+                      btn.setOnClickListener(new View.OnClickListener() {
+                          @Override
+                          public void onClick(View v) {
+                              handleButton(text);
+                          }
+                      });
+                      grid.addView(btn);
+                  }
+                  mainLayout.addView(grid);
+                  setContentView(mainLayout);
+              }
+
+              private void handleButton(String text) {
+                  try {
+                      if (text.matches("[0-9]")) {
+                          if (isNewInput) { currentInput = text; isNewInput = false; }
+                          else { currentInput += text; }
+                          display.setText(currentInput);
+                      } else if (text.equals(".")) {
+                          if (!currentInput.contains(".")) {
+                              currentInput += ".";
+                              display.setText(currentInput);
+                          }
+                      } else if (text.equals("C")) {
+                          currentInput = ""; firstOperand = 0; operator = "";
+                          display.setText("0"); isNewInput = true;
+                      } else if (text.equals("←")) {
+                          if (currentInput.length() > 0) {
+                              currentInput = currentInput.substring(0, currentInput.length() - 1);
+                              display.setText(currentInput.isEmpty() ? "0" : currentInput);
+                          }
+                      } else if (text.equals("±")) {
+                          if (!currentInput.isEmpty() && !currentInput.equals("0")) {
+                              if (currentInput.startsWith("-")) currentInput = currentInput.substring(1);
+                              else currentInput = "-" + currentInput;
+                              display.setText(currentInput);
+                          }
+                      } else if (text.equals("%")) {
+                          if (!currentInput.isEmpty()) {
+                              double val = Double.parseDouble(currentInput) / 100;
+                              currentInput = new DecimalFormat("#.########").format(val);
+                              display.setText(currentInput);
+                          }
+                      } else if (text.equals("+") || text.equals("-") || text.equals("×") || text.equals("÷")) {
+                          if (!currentInput.isEmpty()) {
+                              if (!operator.isEmpty()) calculate();
+                              else firstOperand = Double.parseDouble(currentInput);
+                              operator = text;
+                              isNewInput = true;
+                          }
+                      } else if (text.equals("=")) {
+                          calculate();
+                          operator = "";
+                          isNewInput = true;
+                      }
+                  } catch (Exception e) {
+                      display.setText("错误");
+                      currentInput = ""; operator = ""; isNewInput = true;
+                  }
+              }
+
+              private void calculate() {
+                  if (operator.isEmpty() || currentInput.isEmpty()) return;
+                  double secondOperand = Double.parseDouble(currentInput);
+                  double result = 0;
+                  switch (operator) {
+                      case "+": result = firstOperand + secondOperand; break;
+                      case "-": result = firstOperand - secondOperand; break;
+                      case "×": result = firstOperand * secondOperand; break;
+                      case "÷": 
+                          if (secondOperand != 0) result = firstOperand / secondOperand;
+                          else { display.setText("不能除以0"); currentInput=""; operator=""; return; }
+                          break;
+                  }
+                  String resultStr = new DecimalFormat("#.########").format(result);
+                  display.setText(resultStr);
+                  currentInput = resultStr;
+                  firstOperand = result;
+              }
+          }
+          EOF
+          
+          echo "✅ 计算器源码生成完毕！"
+
+      # 编译打包
       - name: Build APK
         run: |
-          cd my-project
-          # 自动寻找真正的 Gradle 项目入口
-          GRADLEW_PATH=$(find . -name "gradlew" -type f | head -n 1)
-          WORK_DIR=$(dirname "$GRADLEW_PATH")
-          
-          echo "✅ 找到编译目录: $WORK_DIR"
-          cd "$WORK_DIR"
+          gradle wrapper --gradle-version 8.2
           chmod +x gradlew
-          
-          echo "开始编译，请耐心等待..."
           ./gradlew assembleDebug
 
-      # 4. 提取 APK
+      # 提取 APK 供下载
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Camera-App
-          path: my-project/**/build/outputs/apk/debug/*.apk
+          name: My-Calculator-APK
+          path: app/build/outputs/apk/debug/*.apk
