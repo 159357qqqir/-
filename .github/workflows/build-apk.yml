@@ -20,9 +20,9 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          accept-android-sdk-licenses: true # 自动同意协议，解决卡住问题
+          accept-android-sdk-licenses: true
 
-      - name: 预接受全部SDK协议（兜底方案）
+      - name: Accept SDK licenses
         run: yes | sdkmanager --licenses
 
       - name: Build debug APK
