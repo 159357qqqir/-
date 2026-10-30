@@ -20,13 +20,13 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
-        # 删掉cache那一行，不再找lock文件
 
-    - name: Install dependencies
-      run: npm install
-
-    - name: Build project
-      run: npm run build --if-present
+    - name: Install & Build (only if package.json exists)
+      run: |
+        if [ -f "package.json" ]; then
+          npm install
+          npm run build --if-present
+        fi
 
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v3
