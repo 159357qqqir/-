@@ -1,46 +1,42 @@
-name: Build Android APK
+name: Build APK from Empty Repo
 
 on:
   push:
-    branches: [ "main", "master" ] # 根据你的主分支名称修改，比如 master 或 main
-  pull_request:
     branches: [ "main", "master" ]
-  workflow_dispatch: # 支持在 GitHub 网页上手动点击触发
+  workflow_dispatch: # 支持手动点击运行
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      # 1. 拉取仓库代码
-      - name: Checkout repository
+      - name: Checkout Empty Repository
         uses: actions/checkout@v4
 
-      # 2. 设置 JDK 17 (目前主流 Android 构建版本)
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      # 3. 赋予 gradlew 执行权限 (避免 Permission denied 报错)
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      # 4. 配置 Android SDK (修复了下载失效 tools 的问题)
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: '' # 置空，阻止它去下载已被下架的 tools 包
-
-      # 5. 执行 Gradle 编译打包 Debug 版本 APK
+      # 魔法步骤：从官方拉取一个现成的 Android Hello World 项目
+      - name: Clone Official Android Project
+        run: |
+          echo "正在下载开源 Android 项目源码..."
+          # 下载官方的 Android 架构示例项目
+          git clone https://github.com/android/architecture-samples.git my-app
+        
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: |
+          echo "进入项目目录并开始编译..."
+          cd my-app
+          # 赋予编译脚本执行权限
+          chmod +x gradlew
+          # 执行编译
+          ./gradlew assembleDebug
 
-      # 6. 将编译好的 APK 作为压缩包上传，供你下载
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          # 使用通配符，兼容不同模块名称下的 APK 输出
-          path: "**/build/outputs/apk/debug/*.apk"
+          name: Official-Sample-APK
+          # 找到编译好的 APK 并上传
+          path: my-app/app/build/outputs/apk/debug/*.apk
