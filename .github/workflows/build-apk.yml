@@ -1,4 +1,4 @@
-name: Build Calculator APK
+name: Build My Own Calculator
 
 on:
   push:
@@ -23,10 +23,10 @@ jobs:
 
       - name: Generate Calculator Source Code
         run: |
-          echo "正在创建项目目录..."
+          echo "正在从零创建专属计算器..."
           mkdir -p app/src/main/java/com/my/calculator
           
-          # 1. 生成根目录配置文件 (AGP 版本保持 8.1.2)
+          # 1. 写项目配置 (锁定 AGP 8.1.2)
           echo 'rootProject.name = "MyCalculator"
           include ":app"' > settings.gradle
           
@@ -36,7 +36,7 @@ jobs:
           }
           allprojects { repositories { google(); mavenCentral() } }' > build.gradle
           
-          # 2. 生成 App 模块的配置
+          # 2. 写 App 配置
           echo 'apply plugin: "com.android.application"
           android {
               namespace "com.my.calculator"
@@ -50,9 +50,9 @@ jobs:
               }
           }' > app/build.gradle
           
-          # 3. 生成 AndroidManifest.xml
+          # 3. 写安卓清单文件
           echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="全能计算器" android:theme="@android:style/Theme.Material.Light.NoActionBar">
+              <application android:label="专属计算器" android:theme="@android:style/Theme.Material.Light.NoActionBar">
                   <activity android:name=".MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
@@ -62,7 +62,7 @@ jobs:
               </application>
           </manifest>' > app/src/main/AndroidManifest.xml
 
-          # 4. 生成 Java 核心代码
+          # 4. 写 Java 核心代码 (计算器逻辑)
           cat > app/src/main/java/com/my/calculator/MainActivity.java << 'EOF'
           package com.my.calculator;
 
@@ -86,7 +86,6 @@ jobs:
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
-                  
                   LinearLayout mainLayout = new LinearLayout(this);
                   mainLayout.setOrientation(LinearLayout.VERTICAL);
                   mainLayout.setPadding(32, 32, 32, 32);
@@ -120,7 +119,6 @@ jobs:
                       Button btn = new Button(this);
                       btn.setText(text);
                       btn.setTextSize(24);
-                      
                       GridLayout.LayoutParams params = new GridLayout.LayoutParams();
                       params.columnSpec = GridLayout.spec(i % 4, 1f);
                       params.rowSpec = GridLayout.spec(i / 4, 1f);
@@ -211,17 +209,25 @@ jobs:
           }
           EOF
           
-          echo "✅ 计算器源码生成完毕！"
+          echo "✅ 源码凭空捏造完毕！"
 
-      # 关键修复：显式指定与 AGP 8.1.2 匹配的 Gradle 8.0 版本
-      - name: Build APK
+      # 关键修复：直接生成指定版本的 wrapper 文件，避免自动下载出错
+      - name: Force Gradle Version
         run: |
-          gradle wrapper --gradle-version 8.0
+          # 创建 wrapper 目录
+          mkdir -p gradle/wrapper
+          # 写入 Gradle 8.0 的版本信息
+          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.0-bin.zip" > gradle/wrapper/gradle-wrapper.properties
+          echo "✅ Gradle 版本已锁定为 8.0"
+
+      - name: Build My Own APK
+        run: |
+          gradle wrapper
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
-      - name: Upload APK
+      - name: Upload My Own APK
         uses: actions/upload-artifact@v4
         with:
-          name: My-Calculator-APK
+          name: My-Own-Calculator-APK
           path: app/build/outputs/apk/debug/*.apk
