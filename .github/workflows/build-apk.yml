@@ -17,10 +17,11 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-
-      # 缓存下载的 Gradle 包，加快循环测试速度
-      - name: Setup Gradle Cache
-        uses: gradle/actions/setup-gradle@v4
+          
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
 
       # 🚀 第一步：纯手搓生成所有源码文件
       - name: Generate Calculator Source Code
@@ -32,15 +33,15 @@ jobs:
           echo 'rootProject.name = "MyCalculator"
           include ":app"' > settings.gradle
           
-          # 2. 写 App 配置 (compileSdk 升到 34 以兼容新版插件)
+          # 2. 写 App 配置
           echo 'apply plugin: "com.android.application"
           android {
               namespace "com.my.calculator"
-              compileSdk 34
+              compileSdk 33
               defaultConfig {
                   applicationId "com.my.calculator"
                   minSdk 24
-                  targetSdk 34
+                  targetSdk 33
                   versionCode 1
                   versionName "1.0"
               }
@@ -58,7 +59,7 @@ jobs:
               </application>
           </manifest>' > app/src/main/AndroidManifest.xml
 
-          # 4. 写 Java 核心代码 (纯手搓的全能计算器逻辑)
+          # 4. 写 Java 核心代码 (纯手搓计算器逻辑)
           cat > app/src/main/java/com/my/calculator/MainActivity.java << 'EOF'
           package com.my.calculator;
 
@@ -207,7 +208,7 @@ jobs:
           
           echo "✅ 源码凭空捏造完毕！"
 
-      # 🔄 第二步：全自动循环测试版本组合
+      # 🔄 第二步：全自动暴力下载并测试版本组合
       - name: Auto Test & Build APK
         run: |
           # 定义测试矩阵 (AGP:Gradle)
@@ -222,30 +223,30 @@ jobs:
             echo "⏳ 自动测试组合: AGP $AGP + Gradle $GRADLE"
             echo "======================================"
             
-            # 【核心防暴毙技巧】：先把 build.gradle 清空，防止系统默认的 Gradle 提前解析报错
-            echo "" > build.gradle
-            
-            # 生成对应版本的 Gradle Wrapper
-            gradle wrapper --gradle-version $GRADLE > /dev/null 2>&1 || true
-            
-            # 重新写入真正的 AGP 依赖配置
+            # 1. 动态替换 AGP 版本
             echo "buildscript {
                 repositories { google(); mavenCentral() }
                 dependencies { classpath 'com.android.tools.build:gradle:$AGP' }
             }
             allprojects { repositories { google(); mavenCentral() } }" > build.gradle
             
-            # 赋予权限并开始编译
-            chmod +x gradlew
-            ./gradlew assembleDebug --no-daemon
+            # 2. 纯手工下载对应的 Gradle 压缩包（跳过 gradlew 生成）
+            wget -q https://services.gradle.org/distributions/gradle-${GRADLE}-bin.zip
+            unzip -q gradle-${GRADLE}-bin.zip
             
-            # 检查编译是否成功 (退出码是否为 0)
+            # 3. 使用下载的 gradle 直接编译
+            export ANDROID_HOME=$ANDROID_SDK_ROOT
+            ./gradle-${GRADLE}/bin/gradle assembleDebug --no-daemon
+            
+            # 4. 检查编译是否成功
             if [ $? -eq 0 ]; then
               echo "🎉 🎉 🎉 编译成功！最终使用的组合是: AGP $AGP + Gradle $GRADLE"
               SUCCESS=true
               break
             else
               echo "❌ 组合失败，清理现场，准备尝试下一个..."
+              rm -rf gradle-${GRADLE}
+              rm -rf ~/.gradle/caches/modules-2/files-2.1/com.android.tools.build
             fi
           done
           
