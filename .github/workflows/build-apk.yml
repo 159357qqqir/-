@@ -1,39 +1,18 @@
-name: Build Simple APK
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+steps:
+  # 1. 先 checkout 代码
+  - uses: actions/checkout@v4
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+  # 2. 添加 Azure 登录步骤
+  - name: 'Azure Login'
+    uses: azure/login@v2
+    with:
+      client-id: ${{ secrets.AZURE_CLIENT_ID }}
+      tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+      subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          accept-android-sdk-licenses: true
-          packages:
-            - platform-tools
-            - build-tools;34.0.0
-            - platforms;android-34
-
-      - name: Accept SDK licenses
-        run: yes | sdkmanager --licenses || true
-
-      - name: Build debug APK
-        run: ./gradlew assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+  # 3. 再执行部署
+  - name: 'Deploy to Azure Web App'
+    uses: azure/webapps-deploy@v2
+    with:
+      app-name: '你的应用名称'
+      package: '.'
