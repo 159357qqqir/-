@@ -21,13 +21,12 @@ jobs:
       - name: Setup Gradle Cache
         uses: gradle/actions/setup-gradle@v4
 
-      # 🚀 核心魔法：用脚本生成全套安卓计算器源码
       - name: Generate Calculator Source Code
         run: |
           echo "正在创建项目目录..."
           mkdir -p app/src/main/java/com/my/calculator
           
-          # 1. 生成根目录配置文件
+          # 1. 生成根目录配置文件 (AGP 版本保持 8.1.2)
           echo 'rootProject.name = "MyCalculator"
           include ":app"' > settings.gradle
           
@@ -51,7 +50,7 @@ jobs:
               }
           }' > app/build.gradle
           
-          # 3. 生成 AndroidManifest.xml (声明应用名和主界面)
+          # 3. 生成 AndroidManifest.xml
           echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application android:label="全能计算器" android:theme="@android:style/Theme.Material.Light.NoActionBar">
                   <activity android:name=".MainActivity" android:exported="true">
@@ -63,7 +62,7 @@ jobs:
               </application>
           </manifest>' > app/src/main/AndroidManifest.xml
 
-          # 4. 生成 Java 核心代码 (纯代码绘制 UI + 计算逻辑)
+          # 4. 生成 Java 核心代码
           cat > app/src/main/java/com/my/calculator/MainActivity.java << 'EOF'
           package com.my.calculator;
 
@@ -88,12 +87,10 @@ jobs:
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
                   
-                  // 主布局
                   LinearLayout mainLayout = new LinearLayout(this);
                   mainLayout.setOrientation(LinearLayout.VERTICAL);
                   mainLayout.setPadding(32, 32, 32, 32);
 
-                  // 显示屏
                   display = new TextView(this);
                   display.setTextSize(48);
                   display.setGravity(Gravity.END);
@@ -103,7 +100,6 @@ jobs:
                   display.setLayoutParams(displayParams);
                   mainLayout.addView(display);
 
-                  // 按键网格
                   GridLayout grid = new GridLayout(this);
                   grid.setColumnCount(4);
                   grid.setRowCount(5);
@@ -111,7 +107,6 @@ jobs:
                           LinearLayout.LayoutParams.MATCH_PARENT, 0, 3);
                   grid.setLayoutParams(gridParams);
 
-                  // 按键文本
                   String[] buttons = {
                           "C", "±", "%", "÷",
                           "7", "8", "9", "×",
@@ -126,7 +121,6 @@ jobs:
                       btn.setText(text);
                       btn.setTextSize(24);
                       
-                      // 网格权重配置
                       GridLayout.LayoutParams params = new GridLayout.LayoutParams();
                       params.columnSpec = GridLayout.spec(i % 4, 1f);
                       params.rowSpec = GridLayout.spec(i / 4, 1f);
@@ -219,14 +213,13 @@ jobs:
           
           echo "✅ 计算器源码生成完毕！"
 
-      # 编译打包
+      # 关键修复：显式指定与 AGP 8.1.2 匹配的 Gradle 8.0 版本
       - name: Build APK
         run: |
-          gradle wrapper --gradle-version 8.2
+          gradle wrapper --gradle-version 8.0
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --stacktrace
 
-      # 提取 APK 供下载
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
