@@ -1,4 +1,4 @@
-name: Build My Own Calculator
+name: Auto Build My Calculator
 
 on:
   push:
@@ -18,33 +18,29 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      # 缓存下载的 Gradle 包，加快循环测试速度
       - name: Setup Gradle Cache
         uses: gradle/actions/setup-gradle@v4
 
+      # 🚀 第一步：纯手搓生成所有源码文件
       - name: Generate Calculator Source Code
         run: |
           echo "正在从零创建专属计算器..."
           mkdir -p app/src/main/java/com/my/calculator
           
-          # 1. 写项目配置 (锁定 AGP 8.1.2)
+          # 1. 写项目配置
           echo 'rootProject.name = "MyCalculator"
           include ":app"' > settings.gradle
           
-          echo 'buildscript {
-              repositories { google(); mavenCentral() }
-              dependencies { classpath "com.android.tools.build:gradle:8.1.2" }
-          }
-          allprojects { repositories { google(); mavenCentral() } }' > build.gradle
-          
-          # 2. 写 App 配置
+          # 2. 写 App 配置 (compileSdk 升到 34 以兼容新版插件)
           echo 'apply plugin: "com.android.application"
           android {
               namespace "com.my.calculator"
-              compileSdk 33
+              compileSdk 34
               defaultConfig {
                   applicationId "com.my.calculator"
                   minSdk 24
-                  targetSdk 33
+                  targetSdk 34
                   versionCode 1
                   versionName "1.0"
               }
@@ -62,7 +58,7 @@ jobs:
               </application>
           </manifest>' > app/src/main/AndroidManifest.xml
 
-          # 4. 写 Java 核心代码 (计算器逻辑)
+          # 4. 写 Java 核心代码 (纯手搓的全能计算器逻辑)
           cat > app/src/main/java/com/my/calculator/MainActivity.java << 'EOF'
           package com.my.calculator;
 
@@ -211,22 +207,56 @@ jobs:
           
           echo "✅ 源码凭空捏造完毕！"
 
-      # 关键修复：直接生成指定版本的 wrapper 文件，避免自动下载出错
-      - name: Force Gradle Version
+      # 🔄 第二步：全自动循环测试版本组合
+      - name: Auto Test & Build APK
         run: |
-          # 创建 wrapper 目录
-          mkdir -p gradle/wrapper
-          # 写入 Gradle 8.0 的版本信息
-          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.0-bin.zip" > gradle/wrapper/gradle-wrapper.properties
-          echo "✅ Gradle 版本已锁定为 8.0"
+          # 定义测试矩阵 (AGP:Gradle)
+          COMBOS=("8.2.2:8.2" "8.3.0:8.4" "8.4.0:8.6" "8.5.0:8.7")
+          SUCCESS=false
+          
+          for combo in "${COMBOS[@]}"; do
+            AGP="${combo%%:*}"
+            GRADLE="${combo##*:}"
+            
+            echo "======================================"
+            echo "⏳ 自动测试组合: AGP $AGP + Gradle $GRADLE"
+            echo "======================================"
+            
+            # 【核心防暴毙技巧】：先把 build.gradle 清空，防止系统默认的 Gradle 提前解析报错
+            echo "" > build.gradle
+            
+            # 生成对应版本的 Gradle Wrapper
+            gradle wrapper --gradle-version $GRADLE > /dev/null 2>&1 || true
+            
+            # 重新写入真正的 AGP 依赖配置
+            echo "buildscript {
+                repositories { google(); mavenCentral() }
+                dependencies { classpath 'com.android.tools.build:gradle:$AGP' }
+            }
+            allprojects { repositories { google(); mavenCentral() } }" > build.gradle
+            
+            # 赋予权限并开始编译
+            chmod +x gradlew
+            ./gradlew assembleDebug --no-daemon
+            
+            # 检查编译是否成功 (退出码是否为 0)
+            if [ $? -eq 0 ]; then
+              echo "🎉 🎉 🎉 编译成功！最终使用的组合是: AGP $AGP + Gradle $GRADLE"
+              SUCCESS=true
+              break
+            else
+              echo "❌ 组合失败，清理现场，准备尝试下一个..."
+            fi
+          done
+          
+          if [ "$SUCCESS" = false ]; then
+            echo "❌ 所有测试的版本组合均失败，请检查代码。"
+            exit 1
+          fi
 
-      - name: Build My Own APK
-        run: |
-          gradle wrapper
-          chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
-
+      # 第三步：下载编译成功的 APK
       - name: Upload My Own APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: My-Own-Calculator-APK
