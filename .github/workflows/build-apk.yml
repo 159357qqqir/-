@@ -1,9 +1,9 @@
-name: Build Camera APK
+name: Build Chinese Camera APK
 
 on:
   push:
     branches: [ "main", "master" ]
-  workflow_dispatch: # 支持手动点击运行
+  workflow_dispatch: 
 
 jobs:
   build:
@@ -18,42 +18,48 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # 开启 Gradle 缓存，加速编译，避免像上次跑半小时
       - name: Setup Gradle Cache
         uses: gradle/actions/setup-gradle@v4
 
-      # 1. 拉取 Google 官方相机示例项目 (包含完整的拍照、预览、权限申请)
-      - name: Clone Official Camera Project
+      # 1. 获取官方相机项目
+      - name: Download Camera Project
         run: |
-          echo "正在下载 Google 官方 CameraX 源码..."
-          git clone https://github.com/android/camera-samples.git my-camera-app
-        
-      # 2. 魔法步骤：进入相机模块，修改字符串实现汉化
-      - name: Force Chinese Localization
-        run: |
-          cd my-camera-app/CameraXBasic/app/src/main/res/values/
-          echo "开始汉化 App..."
-          # 修改 App 名称
-          sed -i 's/>CameraXBasic</>官方相机(汉化版)</g' strings.xml
-          # 修改拍照按钮提示
-          sed -i 's/>Take Picture</>点击拍照</g' strings.xml
-          # 修改权限提示文本 (如果有)
-          sed -i 's/>Permissions</>需要权限</g' strings.xml
-          echo "汉化完成！"
+          git clone https://github.com/android/camera-samples.git my-project
 
-      # 3. 编译 APK
-      - name: Build Debug APK
+      # 2. 智能汉化：全局搜索文本，找到就替换，找不到也不报错
+      - name: Smart Localization
         run: |
-          # 进入相机的具体子项目目录
-          cd my-camera-app/CameraXBasic
+          cd my-project
+          echo "正在搜索需要汉化的文件..."
+          STRINGS_FILE=$(find . -name "strings.xml" | head -n 1)
+          
+          if [ -n "$STRINGS_FILE" ]; then
+            echo "✅ 找到语言文件: $STRINGS_FILE"
+            # 强制修改 App 名字为中文
+            sed -i 's/>CameraXBasic</>中文相机</g' $STRINGS_FILE
+            sed -i 's/>Take Picture</>拍照</g' $STRINGS_FILE
+          else
+            echo "⚠️ 没有找到 strings.xml，跳过汉化步骤。"
+          fi
+
+      # 3. 智能编译：自动寻找 Gradle 脚本并编译
+      - name: Build APK
+        run: |
+          cd my-project
+          # 自动寻找真正的 Gradle 项目入口
+          GRADLEW_PATH=$(find . -name "gradlew" -type f | head -n 1)
+          WORK_DIR=$(dirname "$GRADLEW_PATH")
+          
+          echo "✅ 找到编译目录: $WORK_DIR"
+          cd "$WORK_DIR"
           chmod +x gradlew
-          echo "开始编译 APK..."
+          
+          echo "开始编译，请耐心等待..."
           ./gradlew assembleDebug
 
-      # 4. 上传 APK
+      # 4. 提取 APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Camera-App-APK
-          # 提取编译好的 APK
-          path: my-camera-app/CameraXBasic/app/build/outputs/apk/debug/*.apk
+          name: Camera-App
+          path: my-project/**/build/outputs/apk/debug/*.apk
