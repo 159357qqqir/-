@@ -1,4 +1,4 @@
-name: Build APK from Empty Repo
+name: Build Camera APK
 
 on:
   push:
@@ -18,25 +18,42 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # 魔法步骤：从官方拉取一个现成的 Android Hello World 项目
-      - name: Clone Official Android Project
+      # 开启 Gradle 缓存，加速编译，避免像上次跑半小时
+      - name: Setup Gradle Cache
+        uses: gradle/actions/setup-gradle@v4
+
+      # 1. 拉取 Google 官方相机示例项目 (包含完整的拍照、预览、权限申请)
+      - name: Clone Official Camera Project
         run: |
-          echo "正在下载开源 Android 项目源码..."
-          # 下载官方的 Android 架构示例项目
-          git clone https://github.com/android/architecture-samples.git my-app
+          echo "正在下载 Google 官方 CameraX 源码..."
+          git clone https://github.com/android/camera-samples.git my-camera-app
         
+      # 2. 魔法步骤：进入相机模块，修改字符串实现汉化
+      - name: Force Chinese Localization
+        run: |
+          cd my-camera-app/CameraXBasic/app/src/main/res/values/
+          echo "开始汉化 App..."
+          # 修改 App 名称
+          sed -i 's/>CameraXBasic</>官方相机(汉化版)</g' strings.xml
+          # 修改拍照按钮提示
+          sed -i 's/>Take Picture</>点击拍照</g' strings.xml
+          # 修改权限提示文本 (如果有)
+          sed -i 's/>Permissions</>需要权限</g' strings.xml
+          echo "汉化完成！"
+
+      # 3. 编译 APK
       - name: Build Debug APK
         run: |
-          echo "进入项目目录并开始编译..."
-          cd my-app
-          # 赋予编译脚本执行权限
+          # 进入相机的具体子项目目录
+          cd my-camera-app/CameraXBasic
           chmod +x gradlew
-          # 执行编译
+          echo "开始编译 APK..."
           ./gradlew assembleDebug
 
+      # 4. 上传 APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Official-Sample-APK
-          # 找到编译好的 APK 并上传
-          path: my-app/app/build/outputs/apk/debug/*.apk
+          name: Camera-App-APK
+          # 提取编译好的 APK
+          path: my-camera-app/CameraXBasic/app/build/outputs/apk/debug/*.apk
