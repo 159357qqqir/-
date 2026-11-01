@@ -1,8 +1,8 @@
 SECTIONS {
     . = 0;
-    .kpm.info  : { *(.kpm.info) }
-    .kpm.init  : { *(.kpm.init) }
-    .kpm.exit  : { *(.kpm.exit) }
+    .kpm_info  : { *(.kpm_info) }
+    .kpm_init  : { *(.kpm_init) }
+    .kpm_exit  : { *(.kpm_exit) }
     .text      : { *(.text) }
     .rodata    : { *(.rodata) }
     .data      : { *(.data) }
