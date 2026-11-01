@@ -1,27 +1,32 @@
-name: 编译KPM
+name: Build KPM
 on:
-  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: 拉取仓库代码
+      - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: 安装aarch64交叉编译工具
+      - name: Install aarch64-none-elf toolchain
         run: |
           sudo apt update
-          sudo apt install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+          sudo apt install -y gcc-aarch64-none-elf binutils-aarch64-none-elf
 
-      - name: 编译KPM
+      - name: Fetch KernelPatch kpm.h + kpm.ld
         run: |
-          aarch64-linux-gnu-gcc -ffreestanding -c main.c -o main.o
-          aarch64-linux-gnu-ld -r main.o -o my.kpm
-          aarch64-linux-gnu-objcopy --strip-all my.kpm
+          wget https://raw.githubusercontent.com/bmax121/KernelPatch/main/kpm/include/kpm.h -O kpm.h
+          wget https://raw.githubusercontent.com/bmax121/KernelPatch/main/kpm/link/kpm.ld -O kpm.ld
 
-      - name: 上传编译产物
+      - name: Build
+        run: make -j$(nproc)
+
+      - name: Upload artifact (demo.kpm)
         uses: actions/upload-artifact@v4
         with:
-          name: 编译结果
-          path: my.kpm
+          name: simple-kpm
+          path: build/demo.kpm
