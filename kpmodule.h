@@ -1,22 +1,16 @@
-
 #ifndef KPMODULE_H
 #define KPMODULE_H
 
-#include <stdint.h>
+#define KPM_SEC_INFO   __attribute__((section(".kpm_info")))
+#define KPM_SEC_INIT   __attribute__((section(".kpm_init")))
+#define KPM_SEC_EXIT   __attribute__((section(".kpm_exit")))
 
-#define KPM_SEC_INFO    ".kpm.info"
-#define KPM_SEC_INIT    ".kpm.init"
-#define KPM_SEC_EXIT    ".kpm.exit"
+#define KPM_NAME(n)     const char kpm_name[] KPM_SEC_INFO = "name=" n
+#define KPM_VERSION(v)  const char kpm_ver[] KPM_SEC_INFO = "version=" v
+#define KPM_AUTHOR(a)   const char kpm_author[] KPM_SEC_INFO = "author=" a
+#define KPM_DESCRIPTION(d) const char kpm_desc[] KPM_SEC_INFO = "desc=" d
 
-#define KPM_NAME(s)         static const char kpm_name[] __attribute__((section(KPM_SEC_INFO))) = "name=" s
-#define KPM_VERSION(s)      static const char kpm_ver[] __attribute__((section(KPM_SEC_INFO))) = "version=" s
-#define KPM_AUTHOR(s)       static const char kpm_author[] __attribute__((section(KPM_SEC_INFO))) = "author=" s
-#define KPM_DESCRIPTION(s)  static const char kpm_desc[] __attribute__((section(KPM_SEC_INFO))) = "desc=" s
-
-typedef void (*kpm_exit_fn)(void);
-typedef int (*kpm_init_fn)(void);
-
-#define KPM_INIT(func)      static kpm_init_fn __kpm_init __attribute__((section(KPM_SEC_INIT), used)) = func
-#define KPM_EXIT(func)      static kpm_exit_fn __kpm_exit __attribute__((section(KPM_SEC_EXIT), used)) = func
+#define KPM_INIT(f)     void (*const kpm_init)(void) KPM_SEC_INIT = f
+#define KPM_EXIT(f)     void (*const kpm_exit)(void) KPM_SEC_EXIT = f
 
 #endif
