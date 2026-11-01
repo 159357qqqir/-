@@ -1,14 +1,27 @@
-#include "kpmodule.h"
+#ifndef __KPMODULE_H__
+#define __KPMODULE_H__
 
-static int my_init(const char *args, const char *event, void *reserved)
-{
-    return 0;
-}
+#include <stdint.h>
 
-static void my_exit(void *reserved)
-{
-}
+typedef int (*kpm_init_t)(void);
+typedef void (*kpm_exit_t)(void);
 
-KPM_MODULE_INFO("pnii", "1.0", "Apache-2.0");
-KPM_INIT(my_init);
-KPM_EXIT(my_exit);
+struct kpm_info {
+    const char *name;
+    const char *version;
+    const char *license;
+    kpm_init_t init;
+    kpm_exit_t exit;
+};
+
+#define KPM_MODULE(_name, _ver, _lic, _init, _exit) \
+    static const struct kpm_info __kpm_info \
+    __attribute__((used, section(".kpm.info"))) = { \
+        .name = _name, \
+        .version = _ver, \
+        .license = _lic, \
+        .init = _init, \
+        .exit = _exit, \
+    }
+
+#endif
