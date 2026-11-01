@@ -11,7 +11,7 @@ jobs:
           sudo apt update
           sudo apt install -y gcc-aarch64-none-elf binutils-aarch64-none-elf
 
-      - name: 生成头文件 + 【你的源码在这里改！】
+      - name: 生成头文件 + 源码
         run: |
           cat > kpm.h <<'HEADER'
 #ifndef __KPM_H
@@ -28,7 +28,7 @@ jobs:
 #endif
 HEADER
 
-          cat > main.c <<'SRC'
+cat > main.c <<'SRC'
 // ========== 这里就是你自己写源码的地方 ==========
 #include "kpm.h"
 
