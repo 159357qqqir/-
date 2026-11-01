@@ -1,25 +1,12 @@
-name: Build KPM
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
+name: Clean old runs
+on: workflow_dispatch
 jobs:
-  build:
+  purge:
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Download aarch64-none-elf-gcc (jsdelivr CDN加速)
-        run: |
-          wget -q https://cdn.jsdelivr.net/gh/xpack-dev-tools/aarch64-none-elf-gcc-xpack@v13.2.1-1/binaries/xpack-aarch64-none-elf-gcc-13.2.1-1-linux-x64.tar.gz
-          tar -zxf xpack-aarch64-none-elf-gcc-13.2.1-1-linux-x64.tar.gz
-          export PATH="$PWD/xpack-aarch64-none-elf-gcc-13.2.1-1-linux-x64/bin:$PATH"
-          aarch64-none-elf-gcc --version
-          make CC=aarch64-none-elf-gcc LD=aarch64-none-elf-ld OBJCOPY=aarch64-none-elf-objcopy
-
-      - name: Upload module.kpm
-        uses: actions/upload-artifact@v4
+      - uses: step-security/delete-workflow-runs@v2
         with:
-          name: module.kpm
-          path: build/module.kpm
+          retain_days: 0
+          keep_minimum_runs: 1
