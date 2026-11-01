@@ -9,16 +9,16 @@ jobs:
       - name: 拉取仓库代码
         uses: actions/checkout@v4
 
-      - name: 安装交叉编译器
+      - name: 安装aarch64交叉编译工具
         run: |
           sudo apt update
-          sudo apt install -y gcc-aarch64-none-elf binutils-aarch64-none-elf
+          sudo apt install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
 
       - name: 编译KPM
         run: |
-          aarch64-none-elf-gcc -ffreestanding -mno-red-zone -c main.c -o main.o
-          aarch64-none-elf-ld -r main.o -o my.kpm
-          aarch64-none-elf-objcopy --strip-all my.kpm
+          aarch64-linux-gnu-gcc -ffreestanding -mno-red-zone -c main.c -o main.o
+          aarch64-linux-gnu-ld -r main.o -o my.kpm
+          aarch64-linux-gnu-objcopy --strip-all my.kpm
 
       - name: 上传编译产物
         uses: actions/upload-artifact@v4
