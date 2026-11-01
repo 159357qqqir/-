@@ -1,9 +1,9 @@
-name: 在线编译自定义KPM
+name: 编译KPM
 on:
   workflow_dispatch:
 
 jobs:
-  build-kpm:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: 安装交叉编译器
@@ -11,7 +11,7 @@ jobs:
           sudo apt update
           sudo apt install -y gcc-aarch64-none-elf binutils-aarch64-none-elf
 
-      - name: 生成头文件 + 源码
+      - name: 生成 kpm.h
         run: |
           cat > kpm.h <<'HEADER'
 #ifndef __KPM_H
@@ -28,7 +28,9 @@ jobs:
 #endif
 HEADER
 
-cat > main.c <<'SRC'
+      - name: 生成 main.c
+        run: |
+          cat > main.c <<'SRC'
 #include "kpm.h"
 
 KPM_NAME("my_kpm");
@@ -47,13 +49,13 @@ void __kpm_exit(void)
 }
 SRC
 
-      - name: 编译KPM
+      - name: 编译
         run: |
           aarch64-none-elf-gcc -ffreestanding -mno-red-zone -c main.c -o main.o
           aarch64-none-elf-ld -r main.o -o my.kpm
           aarch64-none-elf-objcopy --strip-all my.kpm
 
-      - name: 上传成品kpm
+      - name: 上传成品
         uses: actions/upload-artifact@v4
         with:
           name: 编译结果
