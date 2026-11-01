@@ -29,7 +29,6 @@ jobs:
 HEADER
 
 cat > main.c <<'SRC'
-// ========== 这里就是你自己写源码的地方 ==========
 #include "kpm.h"
 
 KPM_NAME("my_kpm");
@@ -39,14 +38,12 @@ KPM_LICENSE("GPL");
 KPM_INIT
 int __kpm_init(void)
 {
-    // 在这里写加载时执行的代码
     return 0;
 }
 
 KPM_EXIT
 void __kpm_exit(void)
 {
-    // 在这里写卸载时执行的代码
 }
 SRC
 
