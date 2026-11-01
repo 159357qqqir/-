@@ -16,7 +16,7 @@ jobs:
 
       - name: 编译KPM
         run: |
-          aarch64-linux-gnu-gcc -ffreestanding -mno-red-zone -c main.c -o main.o
+          aarch64-linux-gnu-gcc -ffreestanding -c main.c -o main.o
           aarch64-linux-gnu-ld -r main.o -o my.kpm
           aarch64-linux-gnu-objcopy --strip-all my.kpm
 
