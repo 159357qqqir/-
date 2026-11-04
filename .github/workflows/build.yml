@@ -1,4 +1,4 @@
-name: Build MyOS
+name: Build MyOS ISO
 on: push
 jobs:
   build:
@@ -6,14 +6,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 安装编译依赖
-        run: sudo apt update && sudo apt install -y gcc nasm make binutils
+      - name: 安装编译 + grub打包依赖
+        run: sudo apt update && sudo apt install -y gcc nasm make binutils grub-pc grub-common xorriso
 
-      - name: 执行编译
-        run: make
+      - name: 编译并生成ISO
+        run: make os.iso
 
-      - name: 上传编译产物
+      - name: 上传ISO镜像
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-output
-          path: kernel.elf
+          name: os-iso
+          path: os.iso
