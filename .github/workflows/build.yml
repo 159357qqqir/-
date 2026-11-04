@@ -1,17 +1,19 @@
-name: Build OS Kernel
+name: Build MyOS
 on: push
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install dependencies
+
+      - name: 安装编译依赖
         run: sudo apt update && sudo apt install -y gcc nasm make binutils
-      - name: Compile
+
+      - name: 执行编译
         run: make
-      - name: Upload kernel.bin
+
+      - name: 上传编译产物
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-image
-          path: kernel.bin
-
+          name: kernel-output
+          path: kernel.elf
