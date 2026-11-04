@@ -1,12 +1,17 @@
-name: Clean old runs
-on: workflow_dispatch
+name: Build OS Kernel
+on: push
 jobs:
-  purge:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      actions: write
     steps:
-      - uses: step-security/delete-workflow-runs@v2
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt update && sudo apt install -y gcc nasm make binutils
+      - name: Compile
+        run: make
+      - name: Upload kernel.bin
+        uses: actions/upload-artifact@v4
         with:
-          retain_days: 0
-          keep_minimum_runs: 1
+          name: kernel-image
+          path: kernel.bin
+
