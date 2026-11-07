@@ -1,4 +1,4 @@
-name: Build nb (Termux aarch64 static)
+name: Build nb Android aarch64 static elf
 on:
   push:
     branches: [ main ]
@@ -10,12 +10,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install cross compile toolchain
+      - name: Install cross toolchain
         run: |
           sudo apt update
           sudo apt install -y gcc-aarch64-linux-gnu git make autoconf automake libtool pkg-config
 
-      - name: Compile libmnl
+      - name: Build libmnl static
         run: |
           git clone https://git.netfilter.org/libmnl
           cd libmnl
@@ -24,7 +24,7 @@ jobs:
           make -j$(nproc)
           make install
 
-      - name: Compile libnfnetlink
+      - name: Build libnfnetlink static
         run: |
           git clone https://git.netfilter.org/libnfnetlink
           cd libnfnetlink
@@ -33,7 +33,7 @@ jobs:
           make -j$(nproc)
           make install
 
-      - name: Compile libnetfilter_queue
+      - name: Build libnetfilter_queue static
         run: |
           git clone https://git.netfilter.org/libnetfilter_queue
           cd libnetfilter_queue
@@ -43,18 +43,18 @@ jobs:
           make -j$(nproc)
           make install
 
-      - name: Build static nb
+      - name: Compile static nb for Android aarch64
         run: |
           export LIBMNL=$(pwd)/libmnl/out
           export LIBNFNL=$(pwd)/libnfnetlink/out
           export LIBNFQ=$(pwd)/libnetfilter_queue/out
-          aarch64-linux-gnu-gcc -static nb.c -o nb \
+          aarch64-linux-gnu-gcc -static -DANDROID nb.c -o nb \
             -I$LIBNFQ/include -I$LIBMNL/include -I$LIBNFNL/include \
             -L$LIBNFQ/lib -L$LIBMNL/lib -L$LIBNFNL/lib \
             -lnetfilter_queue -lnfnetlink -lmnl
 
-      - name: Upload binary artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nb-termux-aarch64
+          name: nb-android-aarch64
           path: nb
