@@ -9,42 +9,48 @@
 #include <linux/ip.h>
 #include <linux/udp.h>
 
-#define UP_RATE     3000000UL
-#define BURST       375000UL
+// 普通应用限速：3Mbps
+#define RATE_NORMAL     3000000UL
+#define BURST_NORMAL    375000UL
+// 无UID硬件卸载包放宽到8Mbps
+#define RATE_OFFLOAD    8000000UL
+#define BURST_OFFLOAD   1000000UL
 
-static const uint16_t game_udp_ports[] = {
-    10001,10002,10003,10005
-};
-#define PORT_COUNT (sizeof(game_udp_ports)/sizeof(game_udp_ports[0]))
-
-static unsigned long tokens = 0;
+static unsigned long token_normal = 0;
+static unsigned long token_offload = 0;
 static struct timespec last_ts;
 
-static int is_game_port(uint16_t dport)
-{
-    for(int i = 0; i < PORT_COUNT; i++)
-    {
-        if(game_udp_ports[i] == dport)
-            return 1;
-    }
-    return 0;
-}
-
-static int token_bucket(size_t pkt_len)
+static int bucket_normal(size_t pkt_len)
 {
     struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &now);
     long diff_us = (now.tv_sec - last_ts.tv_sec) * 1000000L
                    + (now.tv_nsec - last_ts.tv_nsec) / 1000L;
 
-    tokens += diff_us * UP_RATE / 8000000UL;
-    if(tokens > BURST)
-        tokens = BURST;
+    token_normal += diff_us * RATE_NORMAL / 8000000UL;
+    if(token_normal > BURST_NORMAL) token_normal = BURST_NORMAL;
     last_ts = now;
 
-    if(tokens >= pkt_len)
-    {
-        tokens -= pkt_len;
+    if(token_normal >= pkt_len){
+        token_normal -= pkt_len;
+        return 1;
+    }
+    return 0;
+}
+
+static int bucket_offload(size_t pkt_len)
+{
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    long diff_us = (now.tv_sec - last_ts.tv_sec) * 1000000L
+                   + (now.tv_nsec - last_ts.tv_nsec) / 1000L;
+
+    token_offload += diff_us * RATE_OFFLOAD / 8000000UL;
+    if(token_offload > BURST_OFFLOAD) token_offload = BURST_OFFLOAD;
+    last_ts = now;
+
+    if(token_offload >= pkt_len){
+        token_offload -= pkt_len;
         return 1;
     }
     return 0;
@@ -68,41 +74,36 @@ static int nf_callback(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
         return 0;
     }
 
-    struct iphdr *iph = (struct iphdr *)payload;
-    if(iph->protocol == IPPROTO_UDP)
-    {
-        int iphdr_len = iph->ihl * 4;
-        if(len >= iphdr_len + sizeof(struct udphdr))
-        {
-            struct udphdr *udph = (struct udphdr *)(payload + iphdr_len);
-            uint16_t dport = ntohs(udph->dest);
-            if(is_game_port(dport))
-            {
-                printf("BYPASS GAME UDP port=%u len=%d\n", dport, len);
-                nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
-                return 0;
-            }
-        }
-    }
-
     uint32_t uid = 0;
     int ret_uid = nfq_get_uid(nfa, &uid);
-    if(ret_uid >= 0 && uid == 10287)
+    if(ret_uid >=0 && uid == 10287)
     {
         printf("BYPASS UID=10287 len=%d\n", len);
         nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
         return 0;
     }
 
-    if(token_bucket(len))
+    if(ret_uid >=0)
     {
-        printf("ACCEPT len=%d\n", len);
-        nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
-    }
-    else
-    {
-        printf("DROP len=%d\n", len);
-        nfq_set_verdict(qh, id, NF_DROP, 0, NULL);
+        // 正常带UID，非王者：3M限速
+        if(bucket_normal(len))
+        {
+            printf("NORMAL ACCEPT uid=%u len=%d\n",uid,len);
+            nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
+        }else{
+            printf("NORMAL DROP uid=%u len=%d\n",uid,len);
+            nfq_set_verdict(qh, id, NF_DROP, 0, NULL);
+        }
+    }else{
+        // NO_UID IPA卸载包：放宽8M限速
+        if(bucket_offload(len))
+        {
+            printf("OFFLOAD ACCEPT len=%d\n",len);
+            nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
+        }else{
+            printf("OFFLOAD DROP len=%d\n",len);
+            nfq_set_verdict(qh, id, NF_DROP, 0, NULL);
+        }
     }
     return 0;
 }
@@ -127,7 +128,7 @@ int main(void)
     if(!qh) { perror("nfq_create_queue"); return 1; }
     nfq_set_mode(qh, NFQNL_COPY_PACKET, 0xffff);
     fd = nfq_fd(h);
-    printf("Started: UID=10287 + Game UDP port bypass, rate 3Mbps\n");
+    printf("Started: UID10287 bypass | normal:3M | offload(NO_UID):8M\n");
 
     while(1)
     {
