@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <arm_neon.h>
 #include <sched.h>
+#include <unistd.h>
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
@@ -13,11 +14,11 @@
 
 static void pin_cpu(int core_id)
 {
+    pid_t tid = gettid();
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     CPU_SET(core_id, &cpuset);
-    pthread_t self = pthread_self();
-    pthread_setaffinity_np(self, sizeof(cpu_set_t), &cpuset);
+    sched_setaffinity(tid, sizeof(cpu_set_t), &cpuset);
 }
 
 static void *cpu_burn(void *arg)
