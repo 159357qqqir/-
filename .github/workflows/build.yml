@@ -1,24 +1,21 @@
-name: Build KPM
-on: [push, workflow_dispatch]
+name: Build nb
+on: push
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download kptools-linux 0.13.9
+      - uses: actions/checkout@v4
+      - name: Download NDK
         run: |
-          wget https://github.com/bmax121/KernelPatch/releases/download/v0.13.9/kptools-linux
-          chmod +x ./kptools-linux
-
-      - name: Compile kpm
+          wget -q https://dl.google.com/android/repository/android-ndk-r27c-linux.zip
+          unzip -q android-ndk-r27c-linux.zip
+      - name: Build
         run: |
-          ./kptools-linux build dump_func.c
-
+          export NDK_PATH=$(pwd)/android-ndk-r27c
+          make
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dump_func-kpm
-          path: dump_func.kpm
+          name: nb-bin
+          path: nb
