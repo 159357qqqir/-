@@ -1,24 +1,13 @@
-CC = gcc
-AS = nasm
-LD = ld
+NDK_PATH ?= /opt/android-ndk
+TOOLCHAIN := $(NDK_PATH)/toolchains/llvm/prebuilt/linux-x86_64
+CC := $(TOOLCHAIN)/bin/aarch64-linux-android34-clang
+CFLAGS := -O3 -Wall -pthread
+LDFLAGS := -lEGL -lGLESv2
 
-# 输出elf内核
-kernel.elf: boot.o kernel.o
-	$(LD) -m elf_i386 -o kernel.elf boot.o kernel.o
+all: nb
 
-boot.o: boot.asm
-	$(AS) -f elf32 boot.asm -o boot.o
-
-kernel.o: kernel.c
-	$(CC) -m32 -ffreestanding -c kernel.c -o kernel.o
-
-# 打包成ISO
-os.iso: kernel.elf grub.cfg
-	mkdir -p iso_root/boot/grub
-	cp kernel.elf iso_root/boot/
-	cp grub.cfg iso_root/boot/grub/
-	grub-mkrescue -o os.iso iso_root
+nb: nb.c
+	$(CC) $(CFLAGS) nb.c -o nb $(LDFLAGS)
 
 clean:
-	rm -f *.o kernel.elf os.iso
-	rm -rf iso_root
+	rm -f nb
