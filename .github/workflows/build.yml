@@ -1,60 +1,24 @@
-name: Build nb Android aarch64 static elf
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+name: Build KPM
+on: [push, workflow_dispatch]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Install cross toolchain
+      - name: Download kptools-linux 0.13.9
         run: |
-          sudo apt update
-          sudo apt install -y gcc-aarch64-linux-gnu git make autoconf automake libtool pkg-config
+          wget https://github.com/bmax121/KernelPatch/releases/download/v0.13.9/kptools-linux
+          chmod +x ./kptools-linux
 
-      - name: Build libmnl static
+      - name: Compile kpm
         run: |
-          git clone https://git.netfilter.org/libmnl
-          cd libmnl
-          ./autogen.sh
-          ./configure --host=aarch64-linux-gnu --prefix=$PWD/out --enable-static --disable-shared
-          make -j$(nproc)
-          make install
-
-      - name: Build libnfnetlink static
-        run: |
-          git clone https://git.netfilter.org/libnfnetlink
-          cd libnfnetlink
-          ./autogen.sh
-          ./configure --host=aarch64-linux-gnu --prefix=$PWD/out --enable-static --disable-shared
-          make -j$(nproc)
-          make install
-
-      - name: Build libnetfilter_queue static
-        run: |
-          git clone https://git.netfilter.org/libnetfilter_queue
-          cd libnetfilter_queue
-          export PKG_CONFIG_PATH="../libmnl/out/lib/pkgconfig:../libnfnetlink/out/lib/pkgconfig"
-          ./autogen.sh
-          ./configure --host=aarch64-linux-gnu --prefix=$PWD/out --enable-static --disable-shared
-          make -j$(nproc)
-          make install
-
-      - name: Compile static nb for Android aarch64
-        run: |
-          export LIBMNL=$(pwd)/libmnl/out
-          export LIBNFNL=$(pwd)/libnfnetlink/out
-          export LIBNFQ=$(pwd)/libnetfilter_queue/out
-          aarch64-linux-gnu-gcc -static -DANDROID nb.c -o nb \
-            -I$LIBNFQ/include -I$LIBMNL/include -I$LIBNFNL/include \
-            -L$LIBNFQ/lib -L$LIBMNL/lib -L$LIBNFNL/lib \
-            -lnetfilter_queue -lnfnetlink -lmnl
+          ./kptools-linux build dump_func.c
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nb-android-aarch64
-          path: nb
+          name: dump_func-kpm
+          path: dump_func.kpm
