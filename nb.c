@@ -1,5 +1,7 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <pthread.h>
 #include <arm_neon.h>
 #include <sched.h>
@@ -119,7 +121,10 @@ static void *gpu_burn(void *arg)
         return NULL;
     }
 
-    const EGLint ctx_attr[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
+    const EGLint ctx_attr[] = {
+        EGL_CONTEXT_CLIENT_VERSION, 2,
+        EGL_NONE
+    };
     EGLContext ctx = eglCreateContext(dpy, cfg, EGL_NO_CONTEXT, ctx_attr);
     if (ctx == EGL_NO_CONTEXT)
     {
@@ -138,6 +143,7 @@ static void *gpu_burn(void *arg)
         fprintf(stderr, "eglCreatePbufferSurface fail\n");
         return NULL;
     }
+
     if (!eglMakeCurrent(dpy, surf, surf, ctx))
     {
         fprintf(stderr, "eglMakeCurrent fail\n");
@@ -163,7 +169,7 @@ static void *gpu_burn(void *arg)
 
     GLint pos_loc = glGetAttribLocation(prog, "pos");
     glEnableVertexAttribArray(pos_loc);
-    glVertexAttribPointer(pos_loc, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glVertexAttribPointer(pos_loc, 2, GL_FLOAT, GL_FALSE, 0, NULL);
 
     for (;;)
     {
@@ -177,11 +183,11 @@ static void *gpu_burn(void *arg)
 int main(void)
 {
     pthread_t cpu_tid[CPU_THREADS];
-    int core_map[CPU_THREADS];
+    int core_id[CPU_THREADS];
     for (int i = 0; i < CPU_THREADS; i++)
     {
-        core_map[i] = i;
-        pthread_create(&cpu_tid[i], NULL, cpu_burn, &core_map[i]);
+        core_id[i] = i;
+        pthread_create(&cpu_tid[i], NULL, cpu_burn, &core_id[i]);
     }
 
     pthread_t gpu_tid;
