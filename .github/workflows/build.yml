@@ -1,21 +1,19 @@
-name: Build nb
+name: Build Windows upload exe
 on: push
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download NDK
-        run: |
-          wget -q https://dl.google.com/android/repository/android-ndk-r27c-linux.zip
-          unzip -q android-ndk-r27c-linux.zip
-      - name: Build
-        run: |
-          export NDK_PATH=$(pwd)/android-ndk-r27c
-          make
+
+      - name: Install MinGW-w64
+        run: sudo apt update && sudo apt install -y mingw-w64
+
+      - name: Compile upload.exe
+        run: x86_64-w64-mingw32-gcc upload.c -o upload.exe -lws2_32
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nb-bin
-          path: nb
+          name: upload-windows
+          path: upload.exe
