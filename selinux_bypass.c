@@ -9,7 +9,6 @@ typedef int (*avc_has_perm_noaudit_t)(u32 ssid, u32 tsid, u32 tclass, u32 reques
 static int hook_avc_has_perm_noaudit(u32 ssid, u32 tsid, u32 tclass, u32 requested)
 {
     struct task_struct *cur = current;
-    // 放行进程名 kp_bypass
     if (strcmp(cur->comm, "kp_bypass") == 0)
     {
         return 0;
