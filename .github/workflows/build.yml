@@ -8,28 +8,19 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install toolchain
+      - name: Install aarch64-none-elf-gcc
         uses: lawkai-vivo/aarch64-none-elf-gcc-action@v1
 
-      - name: Download KPM headers
+      - name: Clone KernelPatch & build
         run: |
-          mkdir -p kp_sdk/include
-          cd kp_sdk/include
-          wget https://raw.githubusercontent.com/bmax121/KernelPatch/main/kernel/include/kpmodule.h
-          wget https://raw.githubusercontent.com/bmax121/KernelPatch/main/kernel/include/compiler.h
-          wget https://raw.githubusercontent.com/bmax121/KernelPatch/main/kernel/include/kputils.h
-          ls -la
-          cd ../..
-          ls -la
+          git clone https://github.com/bmax121/KernelPatch.git kp
+          aarch64-none-elf-gcc -ffreestanding -fno-stack-protector -fno-stack-check -fno-PIC -mgeneral-regs-only -Ikp/kernel/patch/include -O2 -Wall -c main.c -o main.o
+          aarch64-none-elf-ld -r -nostdlib main.o -o test.kpm
 
-      - name: Build
-        run: make
-
-      - name: Upload
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: kpm
-          path: "*.kpm"
+          path: test.kpm
