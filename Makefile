@@ -1,15 +1,22 @@
-CC := aarch64-none-elf-gcc
-LD := aarch64-none-elf-ld
-OBJCOPY := aarch64-none-elf-objcopy
-KP_DIR := ./KernelPatch
-
-CFLAGS := -ffreestanding -fno-stack-protector -fno-PIC -mno-outline-atomics -std=c11 -I$(KP_DIR)/include
-LDFLAGS := -r -T $(KP_DIR)/scripts/kpm.ld
-
-demo.kpm: demo.c
-	$(CC) $(CFLAGS) -c demo.c -o demo.o
-	$(LD) demo.o $(LDFLAGS) -o demo.kpm
-
-clean:
-	rm -f demo.o demo.kpm
-
+name: Build KPM Demo
+on:
+  push:
+    branches: [ main ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Install aarch64-none-elf toolchain
+        run: |
+          sudo apt update
+          sudo apt install -y gcc-aarch64-none-elf make
+      - name: Build
+        run: make
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: demo.kpm
