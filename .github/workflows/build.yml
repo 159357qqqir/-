@@ -16,16 +16,16 @@ jobs:
         run: |
           git clone https://github.com/bmax121/KernelPatch.git kp
 
-      - name: Install dependencies + xpm
+      - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install -y make
-          npm install -g xpm
 
-      - name: Install aarch64-none-elf-gcc (xPack)
-        run: |
-          xpm install @xpack-dev-tools/aarch64-none-elf-gcc@latest --global
-          echo "$(xpm exec --which aarch64-none-elf-gcc | xargs dirname)" >> $GITHUB_PATH
+      - name: Setup ARM GCC Toolchain
+        uses: ARM-software/setup-arm-gnu-toolchain@v1
+        with:
+          version: "13.3.Rel1"
+          target: aarch64-none-elf
 
       - name: Compile KPM
         run: |
