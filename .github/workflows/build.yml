@@ -7,15 +7,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: ghcr.io/android/kernel-build:android14-6.1
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-
-      - name: Setup Android14-6.1 GKI DDK
-        uses: droid-actions/ddk@v1
-        with:
-          tag: android14-6.1
-          arch: aarch64
 
       - name: Build kernel module
         run: |
