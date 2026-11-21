@@ -13,7 +13,35 @@ jobs:
       - name: Install aarch64-none-elf-gcc
         uses: lawkai-vivo/aarch64-none-elf-gcc-action@v1
 
-      - name: Clone KernelPatch & build
+      - name: Generate main.c
+        run: |
+          cat > main.c <<'EOF'
+#include <compiler.h>
+#include <kpmodule.h>
+
+KPM_NAME("kpm-hello");
+KPM_VERSION("1.0.0");
+KPM_LICENSE("GPL v2");
+KPM_AUTHOR("test");
+KPM_DESCRIPTION("hello kpm");
+
+static long hello_init(const char *args, const char *event, void *reserved)
+{
+    logkd("Hello KPM!\n");
+    return 0;
+}
+
+static long hello_exit(void *reserved)
+{
+    logkd("KPM unload\n");
+    return 0;
+}
+
+KPM_INIT(hello_init);
+KPM_EXIT(hello_exit);
+EOF
+
+      - name: Clone KernelPatch & compile
         run: |
           git clone https://github.com/bmax121/KernelPatch.git kp
           aarch64-none-elf-gcc -ffreestanding -fno-stack-protector -fno-stack-check -fno-PIC -mgeneral-regs-only -Ikp/kernel/patch/include -O2 -Wall -c main.c -o main.o
