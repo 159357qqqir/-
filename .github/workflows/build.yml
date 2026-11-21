@@ -1,30 +1,40 @@
 name: Build KPM
 on:
+  push:
+    branches: [ main ]
+  pull_request:
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Download kpm.h
-        run: wget https://raw.githubusercontent.com/bmax121/KernelPatch/main/kpms/include/kpm.h
+      - name: Download KernelPatch source
+        run: |
+          git clone https://github.com/bmax121/KernelPatch.git kp
 
-      - name: Install toolchain
+      - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y gcc-aarch64-none-elf binutils-aarch64-none-elf
+          sudo apt install -y make wget tar
 
-      - name: Compile
+      - name: Download aarch64-none-elf toolchain
         run: |
-          aarch64-none-elf-gcc -c -O2 -ffreestanding -fno-stack-protector -fno-PIC -fno-pie -nostdlib -o selinux_bypass.o selinux_bypass.c
-          aarch64-none-elf-ld -r -o selinux_bypass.kpm selinux_bypass.o
-          ls -la
+          wget https://developer.arm.com/-/media/Files/downloads/gnu/13.3.rel1-x86_64-aarch64-none-elf.tar.xz
+          tar -xf arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-elf.tar.xz
+          mv arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-elf gcc-arm
+          echo "${PWD}/gcc-arm/bin" >> $GITHUB_PATH
 
-      - name: Upload artifact
+      - name: Compile KPM
+        run: |
+          make
+          ls *.kpm
+
+      - name: Upload KPM artifact
         uses: actions/upload-artifact@v4
         with:
-          name: selinux_bypass
-          path: selinux_bypass.kpm
-          if-no-files-found: error
+          name: kpm-module
+          path: "*.kpm"
