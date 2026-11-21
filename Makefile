@@ -1,5 +1,5 @@
 TARGET := test.kpm
-SRC := src/main.c
+SRC := main.c
 KP_DIR := kp
 TARGET_COMPILE ?= aarch64-none-elf-
 CC := $(TARGET_COMPILE)gcc
