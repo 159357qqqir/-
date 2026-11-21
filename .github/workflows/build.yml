@@ -1,5 +1,6 @@
 name: Build KPM
-on: workflow_dispatch
+on:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -7,7 +8,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Get kpm.h
+      - name: Download kpm.h
         run: wget https://raw.githubusercontent.com/bmax121/KernelPatch/main/kpms/include/kpm.h
 
       - name: Install toolchain
@@ -15,13 +16,15 @@ jobs:
           sudo apt update
           sudo apt install -y gcc-aarch64-none-elf binutils-aarch64-none-elf
 
-      - name: Compile KPM
+      - name: Compile
         run: |
           aarch64-none-elf-gcc -c -O2 -ffreestanding -fno-stack-protector -fno-PIC -fno-pie -nostdlib -o selinux_bypass.o selinux_bypass.c
           aarch64-none-elf-ld -r -o selinux_bypass.kpm selinux_bypass.o
+          ls -la
 
-      - name: Upload
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: selinux_bypass
           path: selinux_bypass.kpm
+          if-no-files-found: error
