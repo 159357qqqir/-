@@ -10,17 +10,13 @@
 
 const char *super_key = "6.6.6.a";
 
-long kp_supercall(int cmd, long a1, long a2, long a3, long a4, long a5, const char *key)
-{
-    return syscall(SYS_kp_supercall, cmd, a1, a2, a3, a4, a5, key);
-}
-
 int main(void)
 {
-    long ret = kp_supercall(SUPERCALL_SELINUX_BYPASS, 1, 0,0,0,0, super_key);
+    // 正确调用格式：syscall(编号, cmd, arg1,arg2,arg3,arg4,arg5, key)
+    long ret = syscall(SYS_kp_supercall, SUPERCALL_SELINUX_BYPASS, 1, 0,0,0,0, super_key);
     if(ret != 0)
     {
-        printf("❌ 开启SELinux绕过失败，核对秘钥\n");
+        printf("❌ 开启SELinux绕过失败，ret=%ld\n", ret);
         return -1;
     }
     printf("✅ 当前线程 SELinux 绕过已开启\n");
@@ -37,7 +33,7 @@ int main(void)
         perror("open /dev/mem");
     }
 
-    // 测试创建独立网络命名空间 netns
+    // 测试netns
     if (unshare(CLONE_NEWNET) == 0)
     {
         printf("✅ 网络命名空间创建成功\n");
