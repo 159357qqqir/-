@@ -1,6 +1,0 @@
-id=selinux_perm_lkm
-name=SELinuxPerm-LKM
-version=1.0
-versionCode=1
-author=Self
-description=6.1GKI LKM强制SELinux宽容，调试专用
