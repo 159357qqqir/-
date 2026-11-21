@@ -8,7 +8,7 @@ OBJCOPY := $(TARGET_COMPILE)objcopy
 
 CFLAGS := -ffreestanding -fno-stack-protector -fno-stack-check
 CFLAGS += -fno-PIC -mgeneral-regs-only
-CFLAGS += -I$(KP_DIR)/src/include -O2 -Wall
+CFLAGS += -I$(KP_DIR)/kpm/include -O2 -Wall
 LDFLAGS := -r -nostdlib
 
 OBJS := $(SRC:.c=.o)
