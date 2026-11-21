@@ -1,27 +1,27 @@
-name: Build SELinux‑Bypass KPM
+name: Build KPM
 on: workflow_dispatch
 
 jobs:
   build:
-    runs-on: ubuntu‑latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch kpm.h
+      - name: Get kpm.h
         run: wget https://raw.githubusercontent.com/bmax121/KernelPatch/main/kpms/include/kpm.h
 
       - name: Install toolchain
         run: |
-          sudo apt‑get update
-          sudo apt‑get install‑y gcc‑aarch64‑none‑elf binutils‑aarch64‑none‑elf
+          sudo apt update
+          sudo apt install -y gcc-aarch64-none-elf binutils-aarch64-none-elf
 
       - name: Compile KPM
         run: |
-          aarch64‑none‑elf‑gcc ‑c ‑O2 ‑ffreestanding ‑fno‑stack‑protector ‑fno‑PIC ‑fno‑pie ‑nostdlib ‑o selinux_bypass.o selinux_bypass.c
-          aarch64‑none‑elf‑ld ‑r ‑o selinux_bypass.kpm selinux_bypass.o
+          aarch64-none-elf-gcc -c -O2 -ffreestanding -fno-stack-protector -fno-PIC -fno-pie -nostdlib -o selinux_bypass.o selinux_bypass.c
+          aarch64-none-elf-ld -r -o selinux_bypass.kpm selinux_bypass.o
 
-      - name: Upload artifact
-        uses: actions/upload‑artifact@v4
+      - name: Upload
+        uses: actions/upload-artifact@v4
         with:
-          name: selinux_bypass‑kpm
+          name: selinux_bypass
           path: selinux_bypass.kpm
