@@ -1,40 +1,19 @@
-name: Build SELinuxPerm LKM
+name: Build KP Bypass
 on:
   push:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: ghcr.io/android/kernel-build:android14-6.1
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      - name: Build kernel module
-        run: |
-          cd src
-          make -j$(nproc)
-
-      - name: Copy ko 到模块根目录
-        run: |
-          cp src/selinux_perm.ko ./selinux_perm.ko
-
-      - name: 打包Magisk模块zip
-        run: |
-          zip -r selinux_perm.zip . \
-          -x ".git/*" \
-          -x ".github/*" \
-          -x "src/*.o" \
-          -x "src/*.mod.c" \
-          -x "src/*.mod" \
-          -x "src/modules.order" \
-          -x "src/modules.builtin" \
-          -x "src/.cache/*"
-
-      - name: 上传产物
+      - uses: actions/checkout@v4
+      - name: Install cross compiler
+        run: sudo apt update && sudo apt install -y gcc-aarch64-linux-gnu
+      - name: Static compile arm64
+        run: aarch64-linux-gnu-gcc kp_bypass.c -o kp_bypass -static
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: selinux_perm_module
-          path: selinux_perm.zip
+          name: kp-bypass-bin
+          path: kp_bypass
