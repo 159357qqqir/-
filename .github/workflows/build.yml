@@ -2,35 +2,34 @@ name: Build KPM
 on:
   push:
     branches: [ main ]
-  pull_request:
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download KernelPatch source
-        run: |
-          git clone https://github.com/bmax121/KernelPatch.git kp
-
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y make
-
-      - name: Install aarch64-none-elf-gcc
+      - name: Install toolchain
         uses: lawkai-vivo/aarch64-none-elf-gcc-action@v1
 
-      - name: Compile KPM
+      - name: Download KPM headers
         run: |
-          make
-          ls *.kpm
+          mkdir -p kp_sdk/include
+          cd kp_sdk/include
+          wget https://raw.githubusercontent.com/bmax121/KernelPatch/main/kernel/include/kpmodule.h
+          wget https://raw.githubusercontent.com/bmax121/KernelPatch/main/kernel/include/compiler.h
+          wget https://raw.githubusercontent.com/bmax121/KernelPatch/main/kernel/include/kputils.h
+          ls -la
+          cd ../..
+          ls -la
 
-      - name: Upload KPM artifact
+      - name: Build
+        run: make
+
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: kpm-module
+          name: kpm
           path: "*.kpm"
